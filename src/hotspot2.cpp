@@ -317,7 +317,7 @@ void SitePrinter::add(const Site& site)
 // Print out the merged site, if any, then reset.
 void SitePrinter::flush()
 {
-  if (mergedSite.chrom != nullptr)
+  if (mergedSite.chrom != NULL)
     {
 #ifdef DEBUG
       cout << *mergedSite.chrom << '\t' << startPos << '\t'
@@ -337,8 +337,8 @@ void SitePrinter::reset()
 {
   startPos = -1;
 
-  mergedSite.chrom = nullptr;
-  mergedSite.ID = nullptr;
+  mergedSite.chrom = NULL;
+  mergedSite.ID = NULL;
   mergedSite.endPos = -10;
   mergedSite.pval = -1.0;
   mergedSite.qval = -1.0;
