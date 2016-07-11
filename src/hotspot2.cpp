@@ -282,6 +282,68 @@ double PvalueManager::FDR(const double& pval)
   return itLower->second;
 }
 
+class SitePrinter {
+public:
+  SitePrinter() { reset(); };
+  void add(const Site& site);
+  void flush();
+
+private:
+  void reset();
+  Site mergedSite;
+  int startPos;
+};
+
+// Add site to the printer.
+// If it is contiguous with the last site added and has the same p/q values, merge them together.
+// Otherwise, output the previous (possibly merged) site and store the new one.
+void SitePrinter::add(const Site& site)
+{
+  if (site.endPos == mergedSite.endPos + 1
+      && site.pval == mergedSite.pval
+      && site.qval == mergedSite.qval
+      && site.chrom == mergedSite.chrom)
+    {
+      mergedSite.endPos++;
+    }
+  else
+    {
+      flush();
+      mergedSite = site;
+      startPos = mergedSite.endPos - 1;
+    }
+}
+
+// Print out the merged site, if any, then reset.
+void SitePrinter::flush()
+{
+  if (mergedSite.chrom != NULL)
+    {
+#ifdef DEBUG
+      cout << *mergedSite.chrom << '\t' << startPos << '\t'
+           << mergedSite.endPos << '\t' << *mergedSite.ID << '\t' << mergedSite.pval
+           << '\t' << mergedSite.qval << '\t' << mergedSite.sampled << '\n';
+#else
+      cout << *mergedSite.chrom << '\t' << startPos << '\t'
+           << mergedSite.endPos << '\t' << *mergedSite.ID << '\t' << mergedSite.pval
+           << '\t' << mergedSite.qval << '\n';
+#endif
+      reset();
+    }
+}
+
+// Set the printer up with no site information
+void SitePrinter::reset()
+{
+  startPos = -1;
+
+  mergedSite.chrom = NULL;
+  mergedSite.ID = NULL;
+  mergedSite.endPos = -10;
+  mergedSite.pval = -1.0;
+  mergedSite.qval = -1.0;
+}
+
 class SiteManager {
 public:
   SiteManager(const int& n) { initialize(n); }
@@ -300,6 +362,7 @@ private:
   int m_idxCurSiteNeedingPval;
   int m_idxInsertHere;
   int m_N;
+  SitePrinter printer;
 };
 
 void SiteManager::initialize(const int& n)
@@ -342,21 +405,10 @@ void SiteManager::getFDRvalsAndWriteAndFlush(PvalueManager& pvm)
   while (i < m_idxCurSiteNeedingPval)
     {
       m_sites[i].qval = pvm.FDR(m_sites[i].pval);
-#ifdef DEBUG
       if (m_sites[i].qval <= pvm.thresholdFDR() && m_sites[i].qval > -0.1)
         {
-          cout << *m_sites[i].chrom << '\t' << m_sites[i].endPos - 1 << '\t'
-               << m_sites[i].endPos << '\t' << *m_sites[i].ID << '\t' << m_sites[i].pval
-               << '\t' << m_sites[i].qval << '\t' << m_sites[i].sampled << '\n';
+          printer.add(m_sites[i]);
         }
-#else
-      if (m_sites[i].qval <= pvm.thresholdFDR() && m_sites[i].qval > -0.1)
-        {
-          cout << *m_sites[i].chrom << '\t' << m_sites[i].endPos - 1 << '\t'
-               << m_sites[i].endPos << '\t' << *m_sites[i].ID << '\t' << m_sites[i].pval
-               << '\t' << m_sites[i].qval << '\n';
-        }
-#endif // DEBUG
       i++;
     }
   // Now move any remaining sites (unprocessed) to the beginning of the m_sites vector.
@@ -381,6 +433,7 @@ void SiteManager::getFDRvalsAndWriteAndFlush(PvalueManager& pvm)
   m_idxCurSiteNeedingPval = 0;
 
   pvm.reset();
+  printer.flush();
 }
 
 struct SiteData {
