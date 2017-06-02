@@ -1,4 +1,4 @@
-hotspot2 v1.1 is a program developed at the Altius Institute for Biomedical Sciences in Seattle, U.S.A.
+hotspot2 is a program developed at the Altius Institute for Biomedical Sciences in Seattle, U.S.A.
 for identifying genomic regions with statistically significant "hotspots," or enrichments,
 of cleavage activity in DNase-seq experiments.  It is designed to run in a UNIX environment,
 and to work with alignment files in BAM format.
