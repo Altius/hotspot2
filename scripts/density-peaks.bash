@@ -44,9 +44,9 @@ for chr in $(awk '{print $1}' "$chrfile"); do
 
   chrLength=`grep -w ^"$chr" "$chrfile" | cut -f3`
 
-  ## Tag density, 150bp window, sliding every 20bp, used for peak-finding and display
-  ##  --sweep-all used to prevent a possible broken pipe
-  ## Use awk, not sed to change NAN to 0 since a 'chromosome' name could include NAN and then so would change fields 1 and 4
+  ## Tag density, 150bp window, sliding every 20bp, used for peak-finding and display.
+  ##  --sweep-all used to prevent a possible broken pipe.
+  ## Use awk, not sed to change NAN to 0 since a 'chromosome' name could include NAN and then fields 1 and 4 would change.
   ## sed could be used with regular expressions, but awk is easy enough here, I think.
 
   bedops --ec --chop 20 --stagger 20 --chrom "$chr" "$chrfile" \
@@ -93,8 +93,8 @@ for chr in $(awk '{print $1}' "$chrfile"); do
              prevValue=$6; prevLine=$0; \
             }END{if(increasing && NR>0){split(prevLine, x, "\t"); print x[1],x[2],x[3],x[4],x[5]}}' \
       | bedmap --ec --sweep-all --chrom "$chr" --skip-unmapped --fraction-map 1.0 --echo --echo-map $hotspots - \
-      | "$AWK_EXE" -F "|" 'BEGIN{OFS="\t"}{split($1,y,"\t");split($2,x,";"); \
-                                  for(i=1;i<=length(x);i++){ \
+      | "$AWK_EXE" -F "|" 'BEGIN{OFS="\t"}{split($1,y,"\t");lengthOfX=split($2,x,";"); \
+                                  for(i=1;i<=lengthOfX;i++){ \
                                      split(x[i],z,"\t"); \
                                      print y[1],y[2],y[3],z[5],int((z[2]+z[3])/2),int((y[2]+y[3])/2) \
                                   } \
