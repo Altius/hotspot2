@@ -199,11 +199,17 @@ void SiteManager::processPvalue(const double& pval
 #endif
 				)
 {
+  static const int MAX_VALUE = static_cast<int>(floor(-log10(numeric_limits<double>::min()) * CHANGE_OF_SCALE + 0.5));
   int negLog10P_scaled;
   if (pval < 0 || pval > 1)
     negLog10P_scaled = 0;
   else
-    negLog10P_scaled = static_cast<int>(floor(-log10(pval) * CHANGE_OF_SCALE + 0.5));
+    {
+      if (pval < numeric_limits<double>::min())
+	negLog10P_scaled = MAX_VALUE;
+      else
+	negLog10P_scaled = static_cast<int>(floor(-log10(pval) * CHANGE_OF_SCALE + 0.5));
+    }
   deque<SiteRange>::iterator itCurSiteNeedingPval(m_sites.begin());
   while (itCurSiteNeedingPval != m_sites.end() && itCurSiteNeedingPval->hasPval)
     itCurSiteNeedingPval++;
@@ -646,13 +652,14 @@ void BackgroundRegionManager::computeStats(const int& this_k)
   // Set up the negative binomial model.
   // Double-check that m < v; if m >= v, which is extremely unlikely,
   // use a more appropriate model (binomial or Poisson).
-  if (0 == m_runningSum_count || 1 == m_runningSum_count) // the only way for count data to have m = v
+  // Use the definitions of variance and mean to perform an integer (exact) test for m == v.
+  if (m_numPtsInNullRegion * m_runningSum_countSquared - m_runningSum_count*m_runningSum_count == m_runningSum_count*(m_numPtsInNullRegion - 1))
     {
       // Poisson, m = v
       prob0 = exp(-m);
       m_pmfParams.push_back(m);
       m_pmf = &nextProbPoisson;
-      if (!warningAlreadyIssued)
+      if ((0 == m_runningSum_count || 1 == m_runningSum_count) && !warningAlreadyIssued)
         {
           cerr << "Warning:  In region " << *m_pCurChrom << ':' << m_posL << '-' << m_posR
                << ", all counts used for statistics were 0, or all were 0 except one was 1.\n"
@@ -772,9 +779,13 @@ void BackgroundRegionManager::computeStats(const int& this_k)
       prevTerm = curTerm;
     }
   m_distn[k].pval = m_distn[k].pmf * sum;
+  if (m_distn[k].pval < numeric_limits<double>::min())
+    m_distn[k].pval = numeric_limits<double>::min();
   while (k > 1)
     {
       m_distn[k - 1].pval = m_distn[k - 1].pmf + m_distn[k].pval;
+      if (m_distn[k].pval < numeric_limits<double>::min())
+	m_distn[k].pval = numeric_limits<double>::min();
       k--;
     }
   m_distn[0].pval = 1.; // explicitly set it to 1, to avoid potential round-off error
@@ -840,11 +851,15 @@ double BackgroundRegionManager::getPvalue(const unsigned int& k)
       prevTerm = curTerm;
     }
   m_distn[k].pval = m_distn[k].pmf * sum;
+  if (m_distn[k].pval < numeric_limits<double>::min())
+    m_distn[k].pval = numeric_limits<double>::min();
   // Fill in P-values for any bins that were added between prev_max_k and k.
   kk = k;
   while (kk > prev_max_k + 1)
     {
       m_distn[kk - 1].pval = m_distn[kk - 1].pmf + m_distn[kk].pval;
+      if (m_distn[k].pval < numeric_limits<double>::min())
+	m_distn[k].pval = numeric_limits<double>::min();
       kk--;
     }
 
