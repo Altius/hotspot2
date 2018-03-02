@@ -28,14 +28,14 @@
 
 using namespace std;
 
-const double CHANGE_OF_SCALE(1000.);
+const long double CHANGE_OF_SCALE(1000.);
 
 struct SiteRangeData {
   int negLog10P_scaled;
   int begPos;
   int width;
   int chromID;
-  double FDR;
+  long double FDR;
 };
 
 bool NegLog10Pscaled_GT(const SiteRangeData& a, const SiteRangeData& b);
@@ -52,8 +52,8 @@ bool OutputOrder_LT(const SiteRangeData& a, const SiteRangeData& b)
   return a.chromID < b.chromID;
 }
 
-bool buildFDRmapping(ifstream& ifs, vector<pair<int, double> >& p_to_q);
-bool buildFDRmapping(ifstream& ifs, vector<pair<int, double> >& p_to_q)
+bool buildFDRmapping(ifstream& ifs, vector<pair<int, long double> >& p_to_q);
+bool buildFDRmapping(ifstream& ifs, vector<pair<int, long double> >& p_to_q)
 {
   const int BUFSIZE(100);
   char buf[BUFSIZE], *p;
@@ -115,15 +115,15 @@ bool buildFDRmapping(ifstream& ifs, vector<pair<int, double> >& p_to_q)
   it = tempMap.end();
   it--;
   int i = 0, numThisExtremeOrMoreExtreme(0);
-  const double N(static_cast<double>(numPvalues));
-  double prevFDR(-1.), FDR;
+  const long double N(static_cast<double>(numPvalues));
+  long double prevFDR(-1.), FDR;
   while (it != tempMap.begin())
     {
       p_to_q[i].first = it->first;
       numThisExtremeOrMoreExtreme += it->second;
-      FDR = pow(10., -it->first/CHANGE_OF_SCALE) * N / static_cast<double>(numThisExtremeOrMoreExtreme);
-      if (FDR < numeric_limits<double>::min())
-	FDR = numeric_limits<double>::min();
+      FDR = pow(10., -it->first/CHANGE_OF_SCALE) * N / static_cast<long double>(numThisExtremeOrMoreExtreme);
+      //      if (FDR < numeric_limits<double>::min())
+      //	FDR = numeric_limits<double>::min();
       if (FDR < prevFDR)
 	FDR = prevFDR;
       if (FDR > 0.999)
@@ -188,10 +188,10 @@ bool buildIntToChromNameMap(ifstream& infile, map<int, string*>& mapOut)
   return true;
 }
 
-bool parseAndProcessInput(const map<int, string*>& intToChromNameMap, const vector<pair<int, double> >& PvalToFDRmapping,
-			  const int& N, const double& FDRthreshold, const bool& writePvals);
-bool parseAndProcessInput(const map<int, string*>& intToChromNameMap, const vector<pair<int, double> >& PvalToFDRmapping,
-			  const int& N, const double& FDRthreshold, const bool& writePvals)
+bool parseAndProcessInput(const map<int, string*>& intToChromNameMap, const vector<pair<int, long double> >& PvalToFDRmapping,
+			  const int& N, const long double& FDRthreshold, const bool& writePvals);
+bool parseAndProcessInput(const map<int, string*>& intToChromNameMap, const vector<pair<int, long double> >& PvalToFDRmapping,
+			  const int& N, const long double& FDRthreshold, const bool& writePvals)
 {
   const int BUFSIZE(1000);
   char buf[BUFSIZE], *p;
@@ -262,7 +262,7 @@ bool parseAndProcessInput(const map<int, string*>& intToChromNameMap, const vect
     }
 
   it = vec.begin();
-  for (vector<pair<int, double> >::const_iterator itPtoQ = PvalToFDRmapping.begin();
+  for (vector<pair<int, long double> >::const_iterator itPtoQ = PvalToFDRmapping.begin();
        itPtoQ != PvalToFDRmapping.end(); itPtoQ++)
     {
       while (it != vec.end() && it->negLog10P_scaled == itPtoQ->first)
@@ -308,7 +308,7 @@ bool parseAndProcessInput(const map<int, string*>& intToChromNameMap, const vect
 int main(int argc, char* argv[])
 {
   // Option defaults
-  double fdr_threshold = 1.00;
+  long double fdr_threshold = 1.00;
   int write_pvals = 0;
   int print_help = 0;
   int print_version = 0;
@@ -454,7 +454,7 @@ int main(int argc, char* argv[])
   if (!buildIntToChromNameMap(ifsChromNames, IntToChromNameMap))
     return -1;
 
-  vector<pair<int, double> > PvalToFDRmapping;
+  vector<pair<int, long double> > PvalToFDRmapping;
   if (!buildFDRmapping(ifsPvals, PvalToFDRmapping))
     return -1;
 
