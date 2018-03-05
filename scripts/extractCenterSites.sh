@@ -91,7 +91,7 @@ do
 	echo -e ${chr}"\t"${begPos}"\t"${endPos} \
 	    | bedops --chop - \
 	    | bedmap --faster --range $HALF_WINDOW_SIZE --echo --count - $TEMP1 \
-	    | awk -v minNum=$MIN_NUM_SITES -F "|" '{if(\$2 >= minNum){print \$1}}' \
+	    | awk -v minNum=$MIN_NUM_SITES -F "|" '{if($2 >= minNum){print $1}}' \
 	    | starch - \
 		     > $TEMP2
     else

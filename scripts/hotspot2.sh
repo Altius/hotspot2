@@ -112,7 +112,7 @@ while getopts 'hc:C:M:e:f:F:m:n:p:s:S:w:P' opt; do
       SEED=$OPTARG
       ;;
     S)
-      SMOOTHING_PARAM="--smoothing_parameter=$OPTARG"
+      SMOOTHING_PARAM="-m $OPTARG"
       ;;
     w)
       BACKGROUND_WINDOW_SIZE=$((2 * OPTARG + 1))
@@ -204,7 +204,7 @@ bash "$CUTCOUNT_EXE" "$BAM" "$CUTCOUNTS" "$FRAGMENTS_OUTFILE" "$TOTALCUTS_OUTFIL
 log "Tallying filtered cut counts in small windows and running part 1 of hotspot2..."
 bedmap --faster --range "$SITE_NEIGHBORHOOD_HALF_WINDOW_SIZE" --delim "\t" --prec 0 --echo --sum "$CENTER_SITES" "$CUTCOUNTS" \
   | "$AWK_EXE" 'BEGIN{OFS="\t"}{if("NAN"==$4){$4=0} print $1, $2, $3, "i", $4}' \
-  | "$HOTSPOT_EXE1" --background_size="$BACKGROUND_WINDOW_SIZE" -c $TEMP_CHROM_MAPPING_HOTSPOT2PART1 -p $TEMP_PVALS -o $TEMP_INTERMEDIATE_FILE_HOTSPOT2PART1
+  | "$HOTSPOT_EXE1" --background_size="$BACKGROUND_WINDOW_SIZE" -c $TEMP_CHROM_MAPPING_HOTSPOT2PART1 -p $TEMP_PVALS $SMOOTHING_PARAM -o $TEMP_INTERMEDIATE_FILE_HOTSPOT2PART1
 if [ "$?" != "0" ]; then
     echo -e "An error occurred when calling bedmap on the \"center sites\" and filtered cut counts file, or while running part 1 of hotspot2."
     exit 2
@@ -213,7 +213,7 @@ fi
 numEntries=`wc -l < $TEMP_PVALS` # used to aid memory allocation
 
 log "Running part 2 of hotspot2..."
-"$HOTSPOT_EXE2" --fdr_threshold="$CALL_THRESHOLD" $WRITE_PVALS $SMOOTHING_PARAM \
+"$HOTSPOT_EXE2" --fdr_threshold="$CALL_THRESHOLD" $WRITE_PVALS \
 		-i $TEMP_INTERMEDIATE_FILE_HOTSPOT2PART1 -n $numEntries -c $TEMP_CHROM_MAPPING_HOTSPOT2PART1 -p $TEMP_PVALS \
     | starch - \
     >"$OUTFILE"

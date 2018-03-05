@@ -28,14 +28,14 @@
 
 using namespace std;
 
-const double CHANGE_OF_SCALE(1000.);
+const long double CHANGE_OF_SCALE(1000.);
 
 struct SiteRangeData {
   int negLog10P_scaled;
   int begPos;
   int width;
   int chromID;
-  float FDR;
+  long double FDR;
 };
 
 bool NegLog10Pscaled_GT(const SiteRangeData& a, const SiteRangeData& b);
@@ -52,8 +52,8 @@ bool OutputOrder_LT(const SiteRangeData& a, const SiteRangeData& b)
   return a.chromID < b.chromID;
 }
 
-bool buildFDRmapping(ifstream& ifs, vector<pair<int, float> >& p_to_q);
-bool buildFDRmapping(ifstream& ifs, vector<pair<int, float> >& p_to_q)
+bool buildFDRmapping(ifstream& ifs, vector<pair<int, long double> >& p_to_q);
+bool buildFDRmapping(ifstream& ifs, vector<pair<int, long double> >& p_to_q)
 {
   const int BUFSIZE(100);
   char buf[BUFSIZE], *p;
@@ -114,13 +114,16 @@ bool buildFDRmapping(ifstream& ifs, vector<pair<int, float> >& p_to_q)
   
   it = tempMap.end();
   it--;
-  int i = 0;
-  float prevFDR(-1.), FDR, N(static_cast<float>(numPvalues)), numThisExtremeOrMoreExtreme(0);
+  int i = 0, numThisExtremeOrMoreExtreme(0);
+  const long double N(static_cast<double>(numPvalues));
+  long double prevFDR(-1.), FDR;
   while (it != tempMap.begin())
     {
       p_to_q[i].first = it->first;
-      numThisExtremeOrMoreExtreme += static_cast<float>(it->second);
-      FDR = static_cast<float>(pow(10., -it->first/CHANGE_OF_SCALE)) * N / numThisExtremeOrMoreExtreme;
+      numThisExtremeOrMoreExtreme += it->second;
+      FDR = pow(10., -it->first/CHANGE_OF_SCALE) * N / static_cast<long double>(numThisExtremeOrMoreExtreme);
+      //      if (FDR < numeric_limits<double>::min())
+      //	FDR = numeric_limits<double>::min();
       if (FDR < prevFDR)
 	FDR = prevFDR;
       if (FDR > 0.999)
@@ -135,7 +138,7 @@ bool buildFDRmapping(ifstream& ifs, vector<pair<int, float> >& p_to_q)
       it--;
     }
 
-  // It's extremely unlikely, but possible that only the smallest observation has B-H FDR = 1.
+  // It's extremely unlikely, but possible that only the smallest -log10(p) has B-H FDR = 1.
   if (i > 0 && p_to_q[i-1].second < 1.)
     {
       p_to_q[i].first = tempMap.begin()->first;
@@ -185,10 +188,10 @@ bool buildIntToChromNameMap(ifstream& infile, map<int, string*>& mapOut)
   return true;
 }
 
-bool parseAndProcessInput(const map<int, string*>& intToChromNameMap, const vector<pair<int, float> >& PvalToFDRmapping,
-			  const int& N, const float& FDRthreshold, const bool& writePvals);
-bool parseAndProcessInput(const map<int, string*>& intToChromNameMap, const vector<pair<int, float> >& PvalToFDRmapping,
-			  const int& N, const float& FDRthreshold, const bool& writePvals)
+bool parseAndProcessInput(const map<int, string*>& intToChromNameMap, const vector<pair<int, long double> >& PvalToFDRmapping,
+			  const int& N, const long double& FDRthreshold, const bool& writePvals);
+bool parseAndProcessInput(const map<int, string*>& intToChromNameMap, const vector<pair<int, long double> >& PvalToFDRmapping,
+			  const int& N, const long double& FDRthreshold, const bool& writePvals)
 {
   const int BUFSIZE(1000);
   char buf[BUFSIZE], *p;
@@ -259,7 +262,7 @@ bool parseAndProcessInput(const map<int, string*>& intToChromNameMap, const vect
     }
 
   it = vec.begin();
-  for (vector<pair<int, float> >::const_iterator itPtoQ = PvalToFDRmapping.begin();
+  for (vector<pair<int, long double> >::const_iterator itPtoQ = PvalToFDRmapping.begin();
        itPtoQ != PvalToFDRmapping.end(); itPtoQ++)
     {
       while (it != vec.end() && it->negLog10P_scaled == itPtoQ->first)
@@ -305,7 +308,7 @@ bool parseAndProcessInput(const map<int, string*>& intToChromNameMap, const vect
 int main(int argc, char* argv[])
 {
   // Option defaults
-  float fdr_threshold = 1.00;
+  long double fdr_threshold = 1.00;
   int write_pvals = 0;
   int print_help = 0;
   int print_version = 0;
@@ -451,7 +454,7 @@ int main(int argc, char* argv[])
   if (!buildIntToChromNameMap(ifsChromNames, IntToChromNameMap))
     return -1;
 
-  vector<pair<int, float> > PvalToFDRmapping;
+  vector<pair<int, long double> > PvalToFDRmapping;
   if (!buildFDRmapping(ifsPvals, PvalToFDRmapping))
     return -1;
 

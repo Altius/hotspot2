@@ -30,7 +30,7 @@ using namespace std;
 
 map<string, string*> interned;
 map<string*, int> chromAsInt;
-const double CHANGE_OF_SCALE(1000.);
+const long double CHANGE_OF_SCALE(1000.);
 
 string* intern(string s)
 {
@@ -59,8 +59,8 @@ int idxFromChrom(string* ptr)
 struct SiteRange {
   string* chrom;
   string* ID;
-  double pval;
-  //  double qval;
+  long double pval;
+  //  long double qval;
   long begPos;
   long endPos;
   int count;
@@ -71,8 +71,8 @@ struct SiteRange {
 #endif
 };
 
-double nextProbNegativeBinomial(const int& k, const double& prevVal, const vector<double>& params);
-double nextProbNegativeBinomial(const int& k, const double& prevVal, const vector<double>& params)
+long double nextProbNegativeBinomial(const int& k, const long double& prevVal, const vector<long double>& params);
+long double nextProbNegativeBinomial(const int& k, const long double& prevVal, const vector<long double>& params)
 {
   if (params.size() < 2)
     {
@@ -88,7 +88,7 @@ double nextProbNegativeBinomial(const int& k, const double& prevVal, const vecto
            << endl;
       exit(1);
     }
-  const double &m(params[0]), &r(params[1]), kk(static_cast<double>(k));
+  const long double &m(params[0]), &r(params[1]), kk(static_cast<long double>(k));
   if (r + m == 0)
     {
       cerr << "Error:  nextProbNegativeBinomial() received m = " << m
@@ -100,8 +100,8 @@ double nextProbNegativeBinomial(const int& k, const double& prevVal, const vecto
   return prevVal * m * (r + kk - 1.) / ((r + m) * kk);
 }
 
-double nextProbBinomial(const int& k, const double& prevVal, const vector<double>& params);
-double nextProbBinomial(const int& k, const double& prevVal, const vector<double>& params)
+long double nextProbBinomial(const int& k, const long double& prevVal, const vector<long double>& params);
+long double nextProbBinomial(const int& k, const long double& prevVal, const vector<long double>& params)
 {
   if (params.size() < 3)
     {
@@ -117,7 +117,7 @@ double nextProbBinomial(const int& k, const double& prevVal, const vector<double
            << endl;
       exit(1);
     }
-  const double &m(params[0]), &v(params[1]), &nn(params[2]), kk(static_cast<double>(k));
+  const long double &m(params[0]), &v(params[1]), &nn(params[2]), kk(static_cast<long double>(k));
   if (kk > nn + 0.5) // really "if kk > nn," but we could have "kk == nn" with nn=15.99999 and kk=16.000001, hence the 0.5
     return 0.;
   if (v < 1.0e-8)
@@ -130,8 +130,8 @@ double nextProbBinomial(const int& k, const double& prevVal, const vector<double
   return prevVal * (m - v) * (nn + 1. - kk) / (v * kk);
 }
 
-double nextProbPoisson(const int& k, const double& prevVal, const vector<double>& params);
-double nextProbPoisson(const int& k, const double& prevVal, const vector<double>& params)
+long double nextProbPoisson(const int& k, const long double& prevVal, const vector<long double>& params);
+long double nextProbPoisson(const int& k, const long double& prevVal, const vector<long double>& params)
 {
   if (params.empty())
     {
@@ -147,7 +147,7 @@ double nextProbPoisson(const int& k, const double& prevVal, const vector<double>
            << endl;
       exit(1);
     }
-  const double &m(params[0]), kk(static_cast<double>(k));
+  const long double &m(params[0]), kk(static_cast<long double>(k));
   return prevVal * m / kk;
 }
 
@@ -155,7 +155,7 @@ class SiteManager {
 public:
   SiteManager(ofstream& ofsJustPvals) : m_ofsJustNegLog10PscaledAndNumOccs(ofsJustPvals) {};
   void addSite(const SiteRange& s);
-  void processPvalue(const double& pval
+  void processPvalue(const long double& pval
 #ifdef DEBUG
 		     , const bool& sampled
 #endif
@@ -193,17 +193,23 @@ inline void SiteManager::writeLastUnreportedSite()
 }
 
 
-void SiteManager::processPvalue(const double& pval
+void SiteManager::processPvalue(const long double& pval
 #ifdef DEBUG
 				, const bool& sampled
 #endif
 				)
 {
+  //  static const int MAX_VALUE = static_cast<int>(floor(-log10(numeric_limits<double>::min()) * CHANGE_OF_SCALE + 0.5));
   int negLog10P_scaled;
   if (pval < 0 || pval > 1)
     negLog10P_scaled = 0;
   else
-    negLog10P_scaled = static_cast<int>(floor(-log10(pval) * CHANGE_OF_SCALE + 0.5));
+    {
+      //      if (pval < numeric_limits<double>::min())
+      //	negLog10P_scaled = MAX_VALUE;
+      //      else
+      negLog10P_scaled = static_cast<int>(floor(-log10(pval) * CHANGE_OF_SCALE + 0.5));
+    }
   deque<SiteRange>::iterator itCurSiteNeedingPval(m_sites.begin());
   while (itCurSiteNeedingPval != m_sites.end() && itCurSiteNeedingPval->hasPval)
     itCurSiteNeedingPval++;
@@ -246,8 +252,8 @@ struct SiteData {
 
 struct StatsForCount {
   int numOccs; // number of occurrences
-  double pmf; // probability mass function
-  double pval; // P-value, probability of observing a count this large or larger
+  long double pmf; // probability mass function
+  long double pval; // P-value, probability of observing a count this large or larger
   int MAxN; // moving average of number-of-occurrences, but not divided by N
 };
 
@@ -266,7 +272,7 @@ private:
   BackgroundRegionManager(const BackgroundRegionManager&); // ditto
   void findCutoff(void);
   void computeStats(const int& this_k);
-  double getPvalue(const unsigned int& k);
+  long double getPvalue(const unsigned int& k);
   int m_posL;
   int m_posR;
   int m_posC;
@@ -278,7 +284,7 @@ private:
   int m_numPtsInNullRegion_duringPrevComputation;
 
   int m_MAlength;
-  double m_thresholdRatio;
+  long double m_thresholdRatio;
   vector<StatsForCount> m_distn; // distribution of observed counts
   deque<SiteData> m_sitesInRegion_leftHalf; // endPos values of the sites in the region and whether P has been assigned
   deque<SiteData> m_sitesInRegion_rightHalf; // endPos values of the sites in the region and whether P has been assigned
@@ -296,8 +302,8 @@ private:
   int m_nextPosToSample;
   int m_sampledDataDistnSize;
 
-  double (*m_pmf)(const int&, const double&, const vector<double>&); // Make these member variables, not local variables,
-  vector<double> m_pmfParams; // so they can be accessed outside computeStats() for debugging.
+  long double (*m_pmf)(const int&, const long double&, const vector<long double>&); // Make these member variables, not local variables,
+  vector<long double> m_pmfParams; // so they can be accessed outside computeStats() for debugging.
   const string* m_pCurChrom;
 };
 
@@ -542,7 +548,7 @@ void BackgroundRegionManager::findCutoff()
       m_kvalsWithMinMAxN.insert(idxC); // idxC == m_modeXval+1 + m_MAlength/2 here, whether !m_sliding or m_sliding==true
       m_minMAxN = m_distn[idxC].MAxN;
     }
-  double minMAxN = static_cast<double>(m_minMAxN);
+  long double minMAxN = static_cast<long double>(m_minMAxN);
 
   idxR++;
   while (idxR < m_sampledDataDistnSize)
@@ -550,7 +556,7 @@ void BackgroundRegionManager::findCutoff()
       idxC++;
       xyCurMAxN.first = idxC;
       xyCurMAxN.second = m_distn[idxC].MAxN;
-      if (static_cast<double>(xyCurMAxN.second) > m_thresholdRatio * minMAxN)
+      if (static_cast<long double>(xyCurMAxN.second) > m_thresholdRatio * minMAxN)
         {
           useGlobMin = true;
           break;
@@ -576,7 +582,7 @@ void BackgroundRegionManager::findCutoff()
               // This is a unique, new minimum.
               m_kvalsWithMinMAxN.clear();
               m_minMAxN = xyCurMAxN.second;
-              minMAxN = static_cast<double>(m_minMAxN);
+              minMAxN = static_cast<long double>(m_minMAxN);
             } // else it's a duplicate occurrence of the existing minimum
           m_kvalsWithMinMAxN.insert(xyCurMAxN.first); // k == idxC
         }
@@ -634,25 +640,26 @@ void BackgroundRegionManager::computeStats(const int& this_k)
   int k;
   // Make *pmf() and params private member variables,
   // so they can be accessed elsewhere during debugging.
-  double prob0; // probability of observing 0 counts by random chance
-  double m; // mean
-  double v; // variance
-  double N(static_cast<double>(m_numPtsInNullRegion));
-  m = static_cast<double>(m_runningSum_count) / N;
-  v = (static_cast<double>(m_runningSum_countSquared) - N * m * m) / (N - 1.);
+  long double prob0; // probability of observing 0 counts by random chance
+  long double m; // mean
+  long double v; // variance
+  long double N(static_cast<long double>(m_numPtsInNullRegion));
+  m = static_cast<long double>(m_runningSum_count) / N;
+  v = (static_cast<long double>(m_runningSum_countSquared) - N * m * m) / (N - 1.);
   m_pmfParams.clear();
   static bool warningAlreadyIssued(false);
 
   // Set up the negative binomial model.
   // Double-check that m < v; if m >= v, which is extremely unlikely,
   // use a more appropriate model (binomial or Poisson).
-  if (0 == m_runningSum_count || 1 == m_runningSum_count) // the only way for count data to have m = v
+  // Use the definitions of variance and mean to perform an integer (exact) test for m == v.
+  if (m_numPtsInNullRegion * m_runningSum_countSquared - m_runningSum_count*m_runningSum_count == m_runningSum_count*(m_numPtsInNullRegion - 1))
     {
       // Poisson, m = v
       prob0 = exp(-m);
       m_pmfParams.push_back(m);
       m_pmf = &nextProbPoisson;
-      if (!warningAlreadyIssued)
+      if ((0 == m_runningSum_count || 1 == m_runningSum_count) && !warningAlreadyIssued)
         {
           cerr << "Warning:  In region " << *m_pCurChrom << ':' << m_posL << '-' << m_posR
                << ", all counts used for statistics were 0, or all were 0 except one was 1.\n"
@@ -668,7 +675,7 @@ void BackgroundRegionManager::computeStats(const int& this_k)
       if (m < v)
         {
           // negative binomial
-          double r = m * m / (v - m);
+          long double r = m * m / (v - m);
           m_pmfParams.push_back(m);
           m_pmfParams.push_back(r);
           prob0 = pow(r / (r + m), r);
@@ -677,8 +684,8 @@ void BackgroundRegionManager::computeStats(const int& this_k)
       else // m > v (this is very unlikely)
         {
           // binomial
-          double n(floor(m * m / (m - v) + 0.5)); // estimate n of the fit from the observed mean and variance
-          double kk_max(static_cast<double>(m_kcutoff)); // BUGBUG if m_kcutoff has 0 observations, do we still want to use it here??!?
+          long double n(floor(m * m / (m - v) + 0.5)); // estimate n of the fit from the observed mean and variance
+          long double kk_max(static_cast<long double>(m_kcutoff)); // BUGBUG if m_kcutoff has 0 observations, do we still want to use it here??!?
           if (kk_max > n + 0.1) // + 0.1 to account for roundoff error, e.g. k=16.00001 and n=15.99999
             {
               // We don't expect this to happen, but if the estimated n is smaller than the observed m_kcutoff,
@@ -711,7 +718,7 @@ void BackgroundRegionManager::computeStats(const int& this_k)
   // If a P-value is, say, 1.23456e-218, do we really want to know that,
   // or are we content to know that it's something smaller than, say, 1e-40?
 
-  double curPMF(prob0);
+  long double curPMF(prob0);
   int k_begin(1), k_end(m_sampledDataDistnSize - 1); // default (-1 == this_k):  compute for all k observed in the background window
   const int MAlenOver2(m_MAlength / 2);
   if (-1 == this_k)
@@ -764,17 +771,21 @@ void BackgroundRegionManager::computeStats(const int& this_k)
   // ending with pval(0) = 1.
   k--; // reset so that k corresponds to the last pmf computed
   int j = k;
-  double sum(1.), prevTerm(1.), curTerm;
-  const double SMALL_VALUE(5.0e-7); // restrict the correctness of the final P-value to ~5 significant digits
+  long double sum(1.), prevTerm(1.), curTerm;
+  const long double SMALL_VALUE(5.0e-7); // restrict the correctness of the final P-value to ~5 significant digits
   while ((curTerm = m_pmf(++j, prevTerm, m_pmfParams)) > SMALL_VALUE)
     {
       sum += curTerm;
       prevTerm = curTerm;
     }
   m_distn[k].pval = m_distn[k].pmf * sum;
+  //  if (m_distn[k].pval < numeric_limits<double>::min())
+  //    m_distn[k].pval = numeric_limits<double>::min();
   while (k > 1)
     {
       m_distn[k - 1].pval = m_distn[k - 1].pmf + m_distn[k].pval;
+      //      if (m_distn[k].pval < numeric_limits<double>::min())
+      //	m_distn[k].pval = numeric_limits<double>::min();
       k--;
     }
   m_distn[0].pval = 1.; // explicitly set it to 1, to avoid potential round-off error
@@ -789,7 +800,7 @@ void BackgroundRegionManager::computeStats(const int& this_k)
   m_numPtsInNullRegion_duringPrevComputation = m_numPtsInNullRegion;
 }
 
-double BackgroundRegionManager::getPvalue(const unsigned int& k)
+long double BackgroundRegionManager::getPvalue(const unsigned int& k)
 {
   if (k < m_distn.size()) // Yes, m_distn.size(), not m_sampledDataDistnSize
     return m_distn[k].pval;
@@ -811,7 +822,7 @@ double BackgroundRegionManager::getPvalue(const unsigned int& k)
 
   const int prev_max_k(static_cast<int>(m_distn.size()) - 1), MAlenOver2(m_MAlength / 2); // Yes, m_distn.size(), not m_sampledDataDistnSize.
   int kk = prev_max_k;
-  double curPMF(m_distn[kk].pmf);
+  long double curPMF(m_distn[kk].pmf);
   while (k >= m_distn.size()) // Yes, k, not kk.  We're growing the vector until k fits into its highest bin.
     {
       curPMF = m_pmf(++kk, curPMF, m_pmfParams);
@@ -832,19 +843,23 @@ double BackgroundRegionManager::getPvalue(const unsigned int& k)
     }
   // Compute the P-value.  See comments in method computeStats() for further info.
   // kk == k at this point.
-  double sum(1.), prevTerm(1.), curTerm;
-  const double SMALL_VALUE(5.0e-7); // restrict the correctness of the final P-value to ~5 significant digits
+  long double sum(1.), prevTerm(1.), curTerm;
+  const long double SMALL_VALUE(5.0e-7); // restrict the correctness of the final P-value to ~5 significant digits
   while ((curTerm = m_pmf(++kk, prevTerm, m_pmfParams)) > SMALL_VALUE)
     {
       sum += curTerm;
       prevTerm = curTerm;
     }
   m_distn[k].pval = m_distn[k].pmf * sum;
+  //  if (m_distn[k].pval < numeric_limits<double>::min())
+  //    m_distn[k].pval = numeric_limits<double>::min();
   // Fill in P-values for any bins that were added between prev_max_k and k.
   kk = k;
   while (kk > prev_max_k + 1)
     {
       m_distn[kk - 1].pval = m_distn[kk - 1].pmf + m_distn[kk].pval;
+      //      if (m_distn[k].pval < numeric_limits<double>::min())
+      //	m_distn[k].pval = numeric_limits<double>::min();
       kk--;
     }
 
@@ -873,7 +888,7 @@ void BackgroundRegionManager::computePandFlush(SiteManager& sm)
     {
       if (!m_sitesInRegion_leftHalf.front().hasPval)
         {
-          double pval;
+          long double pval;
           if (m_pmf != NULL)
             pval = getPvalue(m_sitesInRegion_leftHalf.front().count);
           else
@@ -890,7 +905,7 @@ void BackgroundRegionManager::computePandFlush(SiteManager& sm)
     {
       if (!m_sitesInRegion_rightHalf.front().hasPval)
         {
-          double pval;
+          long double pval;
           if (m_pmf != NULL)
             pval = getPvalue(m_sitesInRegion_rightHalf.front().count);
           else
@@ -968,7 +983,7 @@ void BackgroundRegionManager::slideAndCompute(const SiteRange& s, SiteManager& s
            it != m_sitesInRegion_leftHalf.end();
            it++)
         {
-          double pval;
+          long double pval;
           if (m_pmf != NULL)
             pval = getPvalue(it->count);
           else
@@ -990,7 +1005,7 @@ void BackgroundRegionManager::slideAndCompute(const SiteRange& s, SiteManager& s
       // become the central position.
       if (m_sitesInRegion_rightHalf.front().pos == m_posC)
         {
-          double pval;
+          long double pval;
           if (m_pmf != NULL)
             pval = getPvalue(m_sitesInRegion_rightHalf.front().count);
           else
@@ -1180,7 +1195,7 @@ void BackgroundRegionManager::slideAndCompute(const SiteRange& s, SiteManager& s
               computeStats(m_sitesInRegion_rightHalf.front().count); // sets m_prev_k = m_sitesInRegion_rightHalf.front().count
               needToComputePMFs = false;
             }
-          double pval;
+          long double pval;
           if (m_pmf != NULL)
             pval = getPvalue(m_sitesInRegion_rightHalf.front().count);
           else
@@ -1280,7 +1295,7 @@ void BackgroundRegionManager::slideAndCompute(const SiteRange& s, SiteManager& s
               // Stil need to compute the pmfs for m_prev_k < k <= this k.
               computeStats(m_sitesInRegion_rightHalf.front().count); // sets m_prev_k = m_sitesInRegion_rightHalf.front().count
             }
-          double pval;
+          long double pval;
           if (m_pmf != NULL)
             pval = getPvalue(m_sitesInRegion_rightHalf.front().count);
           else
@@ -1638,7 +1653,7 @@ void BackgroundRegionManager::slideAndCompute(const SiteRange& s, SiteManager& s
           computeStats(m_sitesInRegion_rightHalf.front().count); // sets m_prev_k = m_sitesInRegion_rightHalf.front().count
           needToComputePMFs = false;
         }
-      double pval;
+      long double pval;
       if (m_pmf != NULL)
         pval = getPvalue(m_sitesInRegion_rightHalf.front().count);
       else
@@ -1669,9 +1684,9 @@ void BackgroundRegionManager::slideAndCompute(const SiteRange& s, SiteManager& s
 }
 
 bool parseAndProcessInput(const int& windowSize, const int& samplingInterval, const int& MAlength,
-			  const bool& writePvals, ofstream& ofsPvalData);
+			  ofstream& ofsPvalData);
 bool parseAndProcessInput(const int& windowSize, const int& samplingInterval, const int& MAlength,
-			  const bool& writePvals, ofstream& ofsPvalData)
+			  ofstream& ofsPvalData)
 {
   const int BUFSIZE(1000);
   char buf[BUFSIZE], *p;
@@ -1765,7 +1780,6 @@ int main(int argc, char* argv[])
   int background_size = 50001;
   int sampling_interval = 1;
   int smoothing_parameter = 5; // recommend ca. 15 when the maximum # of sampled observations is ca. 250
-  int write_pvals = 0;
   int print_help = 0;
   int print_version = 0;
   string infilename = "";
@@ -1778,7 +1792,6 @@ int main(int argc, char* argv[])
     { "background_size", required_argument, 0, 'b' },
     { "sampling_interval", required_argument, 0, 'n' },
     { "smoothing_parameter", required_argument, 0, 'm' },
-    { "write_pvals", no_argument, &write_pvals, 1 },
     { "input", required_argument, 0, 'i' },
     { "output", required_argument, 0, 'o' },
     { "outputChromlist", required_argument, 0, 'c' },
@@ -1823,7 +1836,6 @@ int main(int argc, char* argv[])
         case 'V':
           print_version = 1;
           break;
-        // no short option needed for --write_pvals
         case 0:
           // long option received, do nothing
           break;
@@ -1856,7 +1868,6 @@ int main(int argc, char* argv[])
            << "  -b, --background_size=SIZE     The size of the background region (50001)\n"
            << "  -n, --sampling_interval=INT    How often (bp) to sample for null modeling (1)\n"
            << "  -m, --smoothing_prameter=INT   Smoothing parameter used in null modeling (5)\n"
-           << "  --write_pvals                  Output P-values in column 6 (P-values are not output by default)\n"
            << "  -i, --input=FILE               A file to read input from (STDIN)\n"
            << "  -o, --output=FILE              A file to write output to (STDOUT)\n"
 	   << "  -c, --outputChromlist=FILE     Output file to store chromName-to-int mapping\n"
@@ -1864,8 +1875,7 @@ int main(int argc, char* argv[])
 	   << "  -v, --version                  Print the version information and exit\n"
            << "  -h, --help                     Display this helpful help\n"
            << "\n"
-           << " output (sent to stdout) will be a .bed5 file with FDR in field 5\n"
-           << "\tor, if --write_pvals is specified, a .bed6 file with P-values appended in field 6\n"
+           << " output (sent to stdout) will be a .bed4 file with a scaled transformation of the P-value in field 4\n"
            << " input (received from stdin) requires IDs in field 4 and counts in field 5.\n"
            << endl
            << endl;
@@ -1916,7 +1926,7 @@ int main(int argc, char* argv[])
     }
   
   if (!parseAndProcessInput(background_size, sampling_interval, smoothing_parameter,
-			    write_pvals ? true : false, ofsPvals))
+			    ofsPvals))
     return -1;
 
   for (map<string*, int>::const_iterator it = chromAsInt.begin(); it != chromAsInt.end(); it++)
