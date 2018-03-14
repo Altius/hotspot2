@@ -36,6 +36,30 @@ Options:
     -S SMOOTHING_PARAM    (uppercase 'S')
                           Advanced option, to influence curve fitting (5).
                           Should be a small odd integer >=5; for noisy data, try 17.
+    -p PEAKS_DEFINITION   (lowercase 'p'; default = "default_peaks")
+                          Specifies the definition of "peaks" (subsets of hotspots)
+                          that will be used for the accompanying peaks output file.
+                          If supplied, its value must be one of the following:
+                          "default_peaks", "always_summit_centered", "varWidth_nn_ID",
+                          with these exact capitalizations (or lack thereof).
+                          "always_summit_centered" will return 150-bp fixed-width
+                          peaks always centered on the summit of the corresponding
+                          wavelet (or of the max density, when a hotspot lacks a wavelet summit).
+                          Such peaks will sometimes extend beyond the edge of a hotspot.
+                          "default_peaks" behaves similarly to "always_summit_centered",
+                          except that 150-bp fixed-width peaks extending beyond the edge
+                          of their parent hotspot are nudged to lie fully within the hotspot
+                          whenever possible.
+                          "varWidth_nn_ID" specifies that variable-width peaks,
+                          down to a minimum width of nn bp, are to be reported.
+                          (Use "varWidth_50_ID" for a minimum width of 50 bp, etc.)
+                          "ID" is an identifier written into column 4 of the peaks output file.
+                          These peaks correspond to full-width-at-half-maximum
+                          elements for local maxima within the density curve;
+                          a local minimum is substituted whenever half-maximum is not attained.
+                          These variable-width peaks are guided by wavelet summits
+                          (each contains one, or the summit of the max density when absent).
+
 
     Neighborhood and window sizes are specified as the distance from the edge
     to the center - i.e, a 100bp neighborhood size is a 201bp window.
@@ -73,13 +97,14 @@ BACKGROUND_WINDOW_SIZE=50001           # i.e., +/-25kb around each position
 MIN_HOTSPOT_WIDTH=50
 HOTSPOT_FDR_THRESHOLD="0.05"
 CALL_THRESHOLD="$HOTSPOT_FDR_THRESHOLD"
-SEED=$RANDOM
+PEAK_TYPE="default_peaks"
+VAR_WIDTH_PEAKS="0"
 WRITE_PVALS=""
 SMOOTHING_PARAM=""
 
 # Note: Options in the string that are not immediately followed by ':'
-# will not get a value read for them.  Examples are h and P.
-while getopts 'hc:C:M:e:f:F:m:n:p:s:S:w:P' opt; do
+# will not get a value read for them.  Examples are h and P and s.
+while getopts 'hc:C:M:e:f:F:m:n:p:S:w:P' opt; do
   case "$opt" in
     h)
       usage
@@ -108,8 +133,8 @@ while getopts 'hc:C:M:e:f:F:m:n:p:s:S:w:P' opt; do
     P)
       WRITE_PVALS="--write_pvals"
       ;;
-    s)
-      SEED=$OPTARG
+    p)
+      PEAK_TYPE=$OPTARG
       ;;
     S)
       SMOOTHING_PARAM="-m $OPTARG"
@@ -161,14 +186,51 @@ BAM=$1
 OUTDIR=$2
 
 log "Checking system for required executables..."
-require_exes modwt bedGraphToBigWig bedmap samtools hotspot2_part1 hotspot2_part2
+if [ "$PEAK_TYPE" == "default_peaks" ]; then
+    require_exes modwt bedGraphToBigWig bedmap samtools hotspot2_part1 hotspot2_part2
+else
+    if [ "$PEAK_TYPE" == "always_summit_centered" ]; then
+	require_exes modwt bedGraphToBigWig bedmap samtools hotspot2_part1 hotspot2_part2 resolveOverlapsInSummit-CenteredPeaks
+    else
+	require_exes modwt bedGraphToBigWig bedmap samtools hotspot2_part1 hotspot2_part2 resolveOverlapsInSummit-CenteredPeaks findVarWidthPeaks
+    fi
+fi
 
-WAVELETS_EXE=$(which modwt)
 CUTCOUNT_EXE="$(dirname "$0")/cutcounts.bash"
 DENSPK_EXE="$(dirname "$0")/density-peaks.bash"
 MERGE_EXE="$(dirname "$0")/hsmerge.sh"
 HOTSPOT_EXE1=hotspot2_part1
 HOTSPOT_EXE2=hotspot2_part2
+
+# If an optional peak definition was supplied,
+# ensure it's valid.
+if [ "$PEAK_TYPE" != "default_peaks" ]; then
+    if [ "$PEAK_TYPE" != "always_summit_centered" ]; then
+	# value must be varWidth_nn, where nn is an integer
+	type=`echo $PEAK_TYPE | cut -f1 -d '_'`
+	if [ "$type" != "varWidth" ]; then
+	    echo -e "Error in \"-p $PEAK_TYPE\":  \"$PEAK_TYPE\" is invalid."
+	    usage
+	fi
+	minWidthStr=`echo $PEAK_TYPE | cut -f2 -d '_'`
+	integerStr=`echo $minWidthStr | awk '{str=sprintf("%d",$1);print str}'`
+	if [ "$minWidthStr" == "" ] || [ "$minWidthStr" != "$integerStr" ]; then
+	    echo -e "Error in \"-p $PEAK_TYPE\":  \"$PEAK_TYPE\" is invalid."
+	    usage
+	fi
+	id=`echo $PEAK_TYPE | cut -f3 -d '_'`
+	if [ "$id" == "" ]; then
+	    echo -e "Error in \"-p $PEAK_TYPE\":  \"$PEAK_TYPE\" is invalid."
+	    usage
+	fi
+	erroneousExtraStuff=`echo $PEAK_TYPE | cut -f4- -d '_'`
+	if [ "$erroneousExtraStuff" != "" ]; then
+	    echo -e "Error in \"-p $PEAK_TYPE\":  \"$PEAK_TYPE\" is invalid."
+	    usage
+	fi
+	VAR_WIDTH_PEAKS="1"
+    fi
+fi
 
 # Prefer mawk, if installed
 AWK_EXE=$(which mawk 2>/dev/null || which awk)
@@ -199,60 +261,69 @@ TEMP_PVALS=${TMPDIR}/temp_pvals.txt
 TEMP_INTERMEDIATE_FILE_HOTSPOT2PART1=${TMPDIR}/temp_intermediateFile_hotspot2part1.txt
 
 log "Generating cut counts..."
-bash "$CUTCOUNT_EXE" "$BAM" "$CUTCOUNTS" "$FRAGMENTS_OUTFILE" "$TOTALCUTS_OUTFILE" "$CHROM_SIZES" "$MAPPABLE_REGIONS"
+bash "$CUTCOUNT_EXE" "$BAM" "$CUTCOUNTS" "$FRAGMENTS_OUTFILE" "$TOTALCUTS_OUTFILE" "$CHROM_SIZES" $MAPPABLE_REGIONS
 
-log "Tallying filtered cut counts in small windows and running part 1 of hotspot2..."
-bedmap --faster --range "$SITE_NEIGHBORHOOD_HALF_WINDOW_SIZE" --delim "\t" --prec 0 --echo --sum "$CENTER_SITES" "$CUTCOUNTS" \
-  | "$AWK_EXE" 'BEGIN{OFS="\t"}{if("NAN"==$4){$4=0} print $1, $2, $3, "i", $4}' \
-  | "$HOTSPOT_EXE1" --background_size="$BACKGROUND_WINDOW_SIZE" -c $TEMP_CHROM_MAPPING_HOTSPOT2PART1 -p $TEMP_PVALS $SMOOTHING_PARAM -o $TEMP_INTERMEDIATE_FILE_HOTSPOT2PART1
-if [ "$?" != "0" ]; then
-    echo -e "An error occurred when calling bedmap on the \"center sites\" and filtered cut counts file, or while running part 1 of hotspot2."
-    exit 2
+if [ ! -s $OUTFILE ] && ([ ! -s $TEMP_INTERMEDIATE_FILE_HOTSPOT2PART1 ] || [ ! -s $TEMP_PVALS ] || [ ! -s $TEMP_CHROM_MAPPING_HOTSPOT2PART1 ]) then
+    log "Tallying filtered cut counts in small windows and running part 1 of hotspot2..."
+    bedmap --faster --range "$SITE_NEIGHBORHOOD_HALF_WINDOW_SIZE" --delim "\t" --prec 0 --echo --sum "$CENTER_SITES" "$CUTCOUNTS" \
+	| "$AWK_EXE" 'BEGIN{OFS="\t"}{if("NAN"==$4){$4=0} print $1, $2, $3, "i", $4}' \
+	| "$HOTSPOT_EXE1" --background_size="$BACKGROUND_WINDOW_SIZE" -c $TEMP_CHROM_MAPPING_HOTSPOT2PART1 -p $TEMP_PVALS $SMOOTHING_PARAM -o $TEMP_INTERMEDIATE_FILE_HOTSPOT2PART1
+    if [ "$?" != "0" ]; then
+	echo -e "An error occurred when calling bedmap on the \"center sites\" and filtered cut counts file, or while running part 1 of hotspot2."
+	exit 2
+    fi
 fi
 
-numEntries=`wc -l < $TEMP_PVALS` # used to aid memory allocation
+if [ ! -s $OUTFILE ]; then
+    log "Running part 2 of hotspot2..."
+    numEntries=`wc -l < $TEMP_PVALS` # used to aid memory allocation
+    "$HOTSPOT_EXE2" --fdr_threshold="$CALL_THRESHOLD" $WRITE_PVALS \
+       -i $TEMP_INTERMEDIATE_FILE_HOTSPOT2PART1 -n $numEntries -c $TEMP_CHROM_MAPPING_HOTSPOT2PART1 -p $TEMP_PVALS \
+       | starch - \
+       >"$OUTFILE"
+fi
 
-log "Running part 2 of hotspot2..."
-"$HOTSPOT_EXE2" --fdr_threshold="$CALL_THRESHOLD" $WRITE_PVALS \
-		-i $TEMP_INTERMEDIATE_FILE_HOTSPOT2PART1 -n $numEntries -c $TEMP_CHROM_MAPPING_HOTSPOT2PART1 -p $TEMP_PVALS \
-    | starch - \
-    >"$OUTFILE"
+if [ ! -s $HOTSPOT_OUTFILE ]; then
+    log "Calling hotspots..."
 
-# We report the largest -log10(FDR) observed at any bp of a hotspot
-# as the "score" of that hotspot, where FDR is the site-specific FDR estimate.
-# FDR values of 0 will be encountered, and we don't want to do log(0).
-# Nonzero FDR values as low as 1e-308 have been seen during testing.
-# We choose to cap all FDR estimates at 1e-100, i.e. -log10(FDR) = 100.
-# The constant c below converts from natural logarithm to log10.
-# To combat issues awk sometimes has with numbers below 1e-300,
-# we parse the FDR initially as a string, and assume anything below 1e-100
-# passes the user's threshold.
+    "$MERGE_EXE" \
+	-f "$HOTSPOT_FDR_THRESHOLD" \
+	-m "$MIN_HOTSPOT_WIDTH" \
+	"$OUTFILE" \
+	"$HOTSPOT_OUTFILE"
+fi
 
-log "Calling hotspots..."
+if [ ! -s $SPOT_SCORE_OUTFILE ]; then
+    log "Calculating SPOT score..."
+    num_cleaves=$(cat "$TOTALCUTS_OUTFILE")
+    cleaves_in_hotspots=$(bedops --ec -e 1 "$CUTCOUNTS" "$HOTSPOT_OUTFILE" | awk 'BEGIN{s=0} {s+=$5} END {print s}')
+    echo "scale=4; $cleaves_in_hotspots / $num_cleaves" \
+	| bc \
+	>"$SPOT_SCORE_OUTFILE"
+fi
 
-"$MERGE_EXE" \
-  -f "$HOTSPOT_FDR_THRESHOLD" \
-  -m "$MIN_HOTSPOT_WIDTH" \
-  "$OUTFILE" \
-  "$HOTSPOT_OUTFILE"
+if [ ! -s $DENSITY_OUTFILE ] || [ ! -s $PEAKS_OUTFILE ]; then
+    #log "Creating peaks and density..."
+    if [ "$VAR_WIDTH_PEAKS" == "1" ]; then
+	if [ ! -s $TOTALCUTS_OUTFILE ]; then
+	    echo -e "Error:  $TOTALCUTS_OUTFILE, which is needed for the detection of variable-width peaks, was not found, or it is empty."
+	    exit 2
+	fi
+	bash "$DENSPK_EXE" "$TMPDIR" "$PEAK_TYPE" "$CUTCOUNTS" "$HOTSPOT_OUTFILE" "$CHROM_SIZES" "$DENSITY_OUTFILE" "$PEAKS_OUTFILE" `cat $TOTALCUTS_OUTFILE`
+    else
+	bash "$DENSPK_EXE" "$TMPDIR" "$PEAK_TYPE" "$CUTCOUNTS" "$HOTSPOT_OUTFILE" "$CHROM_SIZES" "$DENSITY_OUTFILE" "$PEAKS_OUTFILE"
+    fi
+fi
 
-log "Calculating SPOT score..."
-num_cleaves=$(cat "$TOTALCUTS_OUTFILE")
-cleaves_in_hotspots=$(bedops --ec -e 1 "$CUTCOUNTS" "$HOTSPOT_OUTFILE" | awk 'BEGIN{s=0} {s+=$5} END {print s}')
-echo "scale=4; $cleaves_in_hotspots / $num_cleaves" \
-  | bc \
-    >"$SPOT_SCORE_OUTFILE"
-
-#log "Creating peaks and density..."
-bash "$DENSPK_EXE" "$TMPDIR" "$WAVELETS_EXE" "$CUTCOUNTS" "$HOTSPOT_OUTFILE" "$CHROM_SIZES" "$DENSITY_OUTFILE" "$PEAKS_OUTFILE"
-
-log "Converting density to bigwig..."
-TMPFRAGS="$(mktemp -t fragsXXXXX)"
-unstarch "$DENSITY_OUTFILE" | cut -f1,2,3,5 >"$TMPFRAGS"
-bedGraphToBigWig \
-  "$TMPFRAGS" \
-  <(cut -f1,3 "$CHROM_SIZES") \
-  "$DENSITY_BW"
+if [ ! -s $DENSITY_BW ]; then
+    log "Converting density to bigwig..."
+    TMPFRAGS="$(mktemp -t fragsXXXXX)"
+    unstarch "$DENSITY_OUTFILE" | cut -f1,2,3,5 >"$TMPFRAGS"
+    bedGraphToBigWig \
+	"$TMPFRAGS" \
+	<(cut -f1,3 "$CHROM_SIZES") \
+	"$DENSITY_BW"
+fi
 
 log "Done!"
 
