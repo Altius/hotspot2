@@ -1,7 +1,6 @@
 # Build modwt
-FROM alpine as modwt-build
-RUN apk update
-RUN apk add \
+FROM alpine:3.7 as modwt-build
+RUN apk add --no-cache \
   g++ \
   git \
   make
@@ -11,9 +10,8 @@ RUN git clone https://github.com/StamLab/modwt.git \
       && make
 
 # Build samtools
-FROM alpine as samtools-build
-RUN apk update \
-    && apk add \
+FROM alpine:3.7 as samtools-build
+RUN apk add --no-cache \
     autoconf \
     g++ \
     git \
@@ -28,9 +26,8 @@ RUN wget https://github.com/samtools/samtools/releases/download/1.7/samtools-1.7
       && make install
 
 # Build hotspot2
-FROM alpine as hotspot2-build
-RUN apk update
-RUN apk add \
+FROM alpine:3.7 as hotspot2-build
+RUN apk add --no-cache \
       bash \
       g++ \
       make
@@ -39,9 +36,8 @@ ADD . .
 RUN make
 
 # Build bedGraphToBigWig
-FROM alpine as kentutils-build
-RUN apk update \
-      && apk add \
+FROM alpine:3.7 as kentutils-build
+RUN apk add --no-cache \
       g++ \
       gcc \
       git \
@@ -49,7 +45,6 @@ RUN apk update \
       make \
       mysql-dev \
       zlib-dev
-
 # Get an archive of kentUtils, remove a file that doesn't build, and compile
 RUN wget https://github.com/ENCODE-DCC/kentUtils/archive/v302.0.0.tar.gz \
       && tar xf v302.0.0.tar.gz \
@@ -58,10 +53,9 @@ RUN wget https://github.com/ENCODE-DCC/kentUtils/archive/v302.0.0.tar.gz \
       && make
 
 # Build the final container
-FROM alpine as hotspot2
+FROM alpine:3.7 as hotspot2
 # Install dynamic libraries
-RUN apk update \
-      && apk add \
+RUN apk add --no-cache \
       bash \
       bzip2-dev \
       ncurses \
