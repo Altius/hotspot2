@@ -38,6 +38,25 @@ WORKDIR /hotspot2
 ADD . .
 RUN make
 
+# Build bedGraphToBigWig
+FROM alpine as kentutils-build
+RUN apk update \
+      && apk add \
+      g++ \
+      gcc \
+      git \
+      libpng-dev \
+      make \
+      mysql-dev \
+      zlib-dev
+
+# Get an archive of kentUtils, remove a file that doesn't build, and compile
+RUN wget https://github.com/ENCODE-DCC/kentUtils/archive/v302.0.0.tar.gz \
+      && tar xf v302.0.0.tar.gz \
+      && cd kentUtils-302.0.0 \
+      && sed -i 's/fof.o //' src/lib/makefile \
+      && make
+
 # Build the final container
 FROM alpine as hotspot2
 # Install dynamic libraries
@@ -51,10 +70,9 @@ RUN apk update \
 # Get bedops
 RUN wget -O - https://github.com/bedops/bedops/releases/download/v2.4.31/bedops_linux_x86_64-v2.4.31.tar.bz2 \
   | tar -C /usr/local -xjf -
-# Get bedgraph2BigWig
-RUN cd /usr/local/bin && wget http://hgdownload.soe.ucsc.edu/admin/exe/linux.x86_64/bedGraphToBigWig
 # Get built files
-COPY --from=modwt-build /modwt/bin/ /usr/local/bin
-COPY --from=samtools-build /usr/local/bin /usr/local/bin
+COPY --from=kentutils-build /kentUtils-302.0.0/bin/bedGraphToBigWig /usr/local/bin/
+COPY --from=modwt-build /modwt/bin/ /usr/local/bin/
+COPY --from=samtools-build /usr/local/bin /usr/local/bin/
 COPY --from=hotspot2-build /hotspot2/bin/ /usr/local/bin/
 COPY --from=hotspot2-build /hotspot2/scripts/ /usr/local/bin/
