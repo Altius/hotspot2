@@ -218,13 +218,8 @@ if [ "$PEAK_TYPE" != "default_peaks" ]; then
 	    echo -e "Error in \"-p $PEAK_TYPE\":  \"$PEAK_TYPE\" is invalid."
 	    usage
 	fi
-	id=`echo $PEAK_TYPE | cut -f3 -d '_'`
+	id=`echo $PEAK_TYPE | cut -f3- -d '_'`
 	if [ "$id" == "" ]; then
-	    echo -e "Error in \"-p $PEAK_TYPE\":  \"$PEAK_TYPE\" is invalid."
-	    usage
-	fi
-	erroneousExtraStuff=`echo $PEAK_TYPE | cut -f4- -d '_'`
-	if [ "$erroneousExtraStuff" != "" ]; then
 	    echo -e "Error in \"-p $PEAK_TYPE\":  \"$PEAK_TYPE\" is invalid."
 	    usage
 	fi
