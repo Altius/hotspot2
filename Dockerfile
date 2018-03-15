@@ -59,6 +59,7 @@ RUN apk add --no-cache \
       bash \
       bc \
       bzip2-dev \
+      coreutils \
       ncurses \
       xz-dev \
       zlib-dev
