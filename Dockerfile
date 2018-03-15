@@ -57,6 +57,7 @@ FROM alpine:3.7 as hotspot2
 # Install dynamic libraries
 RUN apk add --no-cache \
       bash \
+      bc \
       bzip2-dev \
       ncurses \
       xz-dev \
