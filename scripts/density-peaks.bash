@@ -50,12 +50,7 @@ if [ "$peak_type" != "default_peaks" ]; then
 	    usage
 	fi
 	MIN_WIDTH=$minWidthStr
-	VAR_WIDTH_PEAKS_ID=`echo $peak_type | cut -f3 -d '_'`
-	erroneousExtraStuff=`echo $peak_type | cut -f4- -d '_'`
-	if [ "$erroneousExtraStuff" != "" ]; then
-	    echo -e "Error in \"-p $peak_type\":  \"$peak_type\" is invalid."
-	    usage
-	fi
+	VAR_WIDTH_PEAKS_ID=`echo $peak_type | cut -f3- -d '_'`
 	if [ "$8" != "" ]; then
 	    TOTAL_TAGS=$8
 	else
