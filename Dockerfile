@@ -68,7 +68,11 @@ RUN wget -O - https://github.com/bedops/bedops/releases/download/v2.4.31/bedops_
   | tar -C /usr/local -xjf -
 # Get built files
 COPY --from=kentutils-build /kentUtils-302.0.0/bin/bedGraphToBigWig /usr/local/bin/
+COPY --from=kentutils-build /kentUtils-302.0.0/bin/bedToBigBed /usr/local/bin/
+
 COPY --from=modwt-build /modwt/bin/ /usr/local/bin/
+
 COPY --from=samtools-build /usr/local/bin /usr/local/bin/
+
 COPY --from=hotspot2-build /hotspot2/bin/ /usr/local/bin/
 COPY --from=hotspot2-build /hotspot2/scripts/ /usr/local/bin/
