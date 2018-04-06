@@ -199,16 +199,16 @@ void SiteManager::processPvalue(const long double& pval
 #endif
 				)
 {
-  //  static const int MAX_VALUE = static_cast<int>(floor(-log10(numeric_limits<double>::min()) * CHANGE_OF_SCALE + 0.5));
+  static const int MAX_VALUE = static_cast<int>(floor(-log10(numeric_limits<long double>::min()) * CHANGE_OF_SCALE + 0.5));
   int negLog10P_scaled;
   if (pval < 0 || pval > 1)
     negLog10P_scaled = 0;
   else
     {
-      //      if (pval < numeric_limits<double>::min())
-      //	negLog10P_scaled = MAX_VALUE;
-      //      else
-      negLog10P_scaled = static_cast<int>(floor(-log10(pval) * CHANGE_OF_SCALE + 0.5));
+      if (pval < numeric_limits<long double>::min())
+      	negLog10P_scaled = MAX_VALUE;
+      else
+	negLog10P_scaled = static_cast<int>(floor(-log10(pval) * CHANGE_OF_SCALE + 0.5));
     }
   deque<SiteRange>::iterator itCurSiteNeedingPval(m_sites.begin());
   while (itCurSiteNeedingPval != m_sites.end() && itCurSiteNeedingPval->hasPval)

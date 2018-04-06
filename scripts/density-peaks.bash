@@ -353,7 +353,7 @@ function get_forcedCall_peaks_standard {
              x_maxSignal = y[5]; \
              x_centerOfHotspot = y[6]; \
              if (L_xR > C_xL) { C_xL = L_xR } \
-             if (L_xR > C_xR) { \
+             if (L_xR >= C_xR) { \
                 # this entire hotspot is fully enclosed by the previous peak call! \
                 prevL_xR = L_xR; \
                 next; \
