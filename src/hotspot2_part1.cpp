@@ -184,7 +184,7 @@ inline void SiteManager::writeLastUnreportedSite()
 	   << m_sites.front().endPos - m_sites.front().begPos << '\t'
 	   << m_sites.front().negLog10P_scaled;
 #ifdef DEBUG
-      cout << m_sites.front().sampled;
+      cout << '\t' << m_sites.front().sampled;
 #endif
       cout << '\n';
       m_ofsJustNegLog10PscaledAndNumOccs << m_sites.front().negLog10P_scaled << '\t'
@@ -276,11 +276,11 @@ private:
   int m_posL;
   int m_posR;
   int m_posC;
-  int m_runningSum_count;
-  int m_runningSum_countSquared;
+  long m_runningSum_count;
+  long m_runningSum_countSquared;
   int m_numPtsInNullRegion;
-  int m_runningSum_count_duringPrevComputation;
-  int m_runningSum_countSquared_duringPrevComputation;
+  long m_runningSum_count_duringPrevComputation;
+  long m_runningSum_countSquared_duringPrevComputation;
   int m_numPtsInNullRegion_duringPrevComputation;
 
   int m_MAlength;
@@ -310,8 +310,9 @@ private:
 BackgroundRegionManager::BackgroundRegionManager(const int& samplingInterval, const int& MAlength)
 {
   m_posL = m_posC = m_posR = -1;
-  m_runningSum_count = m_runningSum_countSquared = m_numPtsInNullRegion = 0;
-  m_runningSum_count_duringPrevComputation = m_runningSum_countSquared_duringPrevComputation = m_numPtsInNullRegion_duringPrevComputation = 0;
+  m_runningSum_count = m_runningSum_countSquared
+    = m_runningSum_count_duringPrevComputation = m_runningSum_countSquared_duringPrevComputation = 0;
+  m_numPtsInNullRegion = m_numPtsInNullRegion_duringPrevComputation = 0;
   m_kcutoff = m_modeYval = m_modeXval = -1;
   m_MAlength = MAlength; // see explanation in findCutoff(); 5 is good when samplingInterval = 1, 15 is good when windowSize/samplingInterval ~= 250
   m_thresholdRatio = 1.33; // see explanation in findCutoff(); could instead try 1.4. 1.5 seems to be too high, 1.2 seems to be too low.
@@ -458,11 +459,12 @@ void BackgroundRegionManager::findCutoff()
           if (kcutoff_uponEntry <= 0)
             {
               // Compute from scratch.
-              m_runningSum_count = m_runningSum_countSquared = m_numPtsInNullRegion = 0;
-              for (int kk = 0; kk <= m_kcutoff; kk++)
+              m_runningSum_count = m_runningSum_countSquared = 0;
+              m_numPtsInNullRegion = 0;
+              for (long kk = 0; kk <= static_cast<long>(m_kcutoff); kk++)
                 {
-                  m_runningSum_count += m_distn[kk].numOccs * kk;
-                  m_runningSum_countSquared += m_distn[kk].numOccs * kk * kk;
+                  m_runningSum_count += static_cast<long>(m_distn[kk].numOccs) * kk;
+                  m_runningSum_countSquared += static_cast<long>(m_distn[kk].numOccs) * kk * kk;
                   m_numPtsInNullRegion += m_distn[kk].numOccs;
                 }
             }
@@ -471,20 +473,21 @@ void BackgroundRegionManager::findCutoff()
               if (m_kcutoff > kcutoff_uponEntry)
                 {
                   // The null region has expanded; increase the values accordingly.
-                  for (int kk = kcutoff_uponEntry + 1; kk <= m_kcutoff; kk++)
+                  for (long kk = static_cast<long>(kcutoff_uponEntry + 1);
+		       kk <= static_cast<long>(m_kcutoff); kk++)
                     {
-                      m_runningSum_count += m_distn[kk].numOccs * kk;
-                      m_runningSum_countSquared += m_distn[kk].numOccs * kk * kk;
+                      m_runningSum_count += static_cast<long>(m_distn[kk].numOccs) * kk;
+                      m_runningSum_countSquared += static_cast<long>(m_distn[kk].numOccs) * kk * kk;
                       m_numPtsInNullRegion += m_distn[kk].numOccs;
                     }
                 }
               else
                 {
                   // The null region has contracted; decrease the values accordingly.
-                  for (int kk = kcutoff_uponEntry; kk > m_kcutoff; kk--)
+                  for (long kk = static_cast<long>(kcutoff_uponEntry); kk > static_cast<long>(m_kcutoff); kk--)
                     {
-                      m_runningSum_count -= m_distn[kk].numOccs * kk;
-                      m_runningSum_countSquared -= m_distn[kk].numOccs * kk * kk;
+                      m_runningSum_count -= static_cast<long>(m_distn[kk].numOccs) * kk;
+                      m_runningSum_countSquared -= static_cast<long>(m_distn[kk].numOccs) * kk * kk;
                       m_numPtsInNullRegion -= m_distn[kk].numOccs;
                     }
                 }
@@ -922,8 +925,9 @@ void BackgroundRegionManager::computePandFlush(SiteManager& sm)
   m_distn.clear();
   m_posL = m_posC = m_posR = -1;
   m_pCurChrom = NULL;
-  m_runningSum_count = m_runningSum_countSquared = m_numPtsInNullRegion = 0;
-  m_runningSum_count_duringPrevComputation = m_runningSum_countSquared_duringPrevComputation = m_numPtsInNullRegion_duringPrevComputation = 0;
+  m_runningSum_count = m_runningSum_countSquared = 
+    m_runningSum_count_duringPrevComputation = m_runningSum_countSquared_duringPrevComputation = 0;
+  m_numPtsInNullRegion = m_numPtsInNullRegion_duringPrevComputation = 0;
   m_modeYval = m_modeXval = m_kcutoff = m_kTrendReversal = -1;
   m_sliding = false;
   m_needToUpdate_kcutoff = true;
@@ -1064,8 +1068,8 @@ void BackgroundRegionManager::slideAndCompute(const SiteRange& s, SiteManager& s
               // Update the values used to compute the mean and variance of the estimated null distribution.
               if (k <= m_kcutoff)
                 {
-                  m_runningSum_count -= k;
-                  m_runningSum_countSquared -= k * k;
+                  m_runningSum_count -= static_cast<long>(k);
+                  m_runningSum_countSquared -= static_cast<long>(k * k);
                   m_numPtsInNullRegion--;
                 }
               m_distn[k].numOccs--;
@@ -1337,8 +1341,8 @@ void BackgroundRegionManager::slideAndCompute(const SiteRange& s, SiteManager& s
       // Update the values used to compute the mean and variance of the estimated null distribution.
       if (k_outgoing <= m_kcutoff)
         {
-          m_runningSum_count -= k_outgoing;
-          m_runningSum_countSquared -= k_outgoing * k_outgoing;
+          m_runningSum_count -= static_cast<long>(k_outgoing);
+          m_runningSum_countSquared -= static_cast<long>(k_outgoing * k_outgoing);
           m_numPtsInNullRegion--;
         }
       m_distn[k_outgoing].numOccs--;
