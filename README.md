@@ -39,13 +39,13 @@ window sizes are desired, `extractCenterSites.sh` needs to be run once per windo
 
 Hotspots are called for an input alignment file in BAM format via a set of scripts that are
 each executed by the `hotspot2.sh` script.  This script also executes two programs that need to
-be compiled or "made" on the computer where hotspot2.sh will run.  To make these programs
-(hotspot2_part1 and hotspot2_part2), simply type the command `make` from within the hotspot2 directory.
-(This will create the programs hotspot2_part1 and hotspot2_part2 in the subdirectory named "bin.")
+be compiled or "made" on the computer where hotspot2.sh will run.  To make these programs, and
+two others that are optionally run by the `density-peaks.bash` script, simply type the command `make`
+from within the hotspot2 directory. (This will place the programs in the subdirectory named "bin.")
 
-Note:  After the programs hotspot2_part1 and hotspot2_part2 are made, they must be added to the user's PATH.
+Note:  After the programs are made, their location (subdirectory "bin") must be added to the user's PATH.
 
-Once the hotspot2 program has been compiled and the center sites file has been created
+Once the hotspot2 programs have been compiled and the center sites file has been created
 by running `extractCenterSites.sh`, `hotspot2.sh` will be ready to run.  To see the usage information
 for this script, including descriptions of its various parameters and their default settings, type
 
@@ -70,7 +70,7 @@ in `yourOutputDirectory`:
 * yourData.peaks.starch
 * yourData.SPOT.txt
 
-In a typical use case, only two of these files might be of interest, `yourData.hotspots.fdr0.05.starch`
+In one typical use case, only two of these files might be of interest, `yourData.hotspots.fdr0.05.starch`
 and `yourData.SPOT.txt`.  The former contains the hotspots called at the specified (in this case, default)
 FDR threshold.  The latter contains the SPOT score, or Signal Portion Of Tags; it is a metric that
 gives an indication of the quality of the sample and/or of the experiment.  The SPOT score is simply
@@ -89,7 +89,40 @@ hotspots can be re-called using `hsmerge.sh`.  If it was set to, e.g., 0.05 for 
 the size of the `yourData.allcalls.starch` file, and hotspots called at threshold 0.10 are then desired,
 `hotspot2.sh` would need to be re-run with `-f 0.10` and `-F 0.10` (or a higher threshold for the latter).
 
+In another typical use case, alignment files from many DNase-seq experiments are available
+(they might correspond to a comprehensive set of cell and tissue types for an organism,
+or to samples of a given cell type taken from patients that constitute "cases" and "controls"
+in a study of a disease or trait), and it is desired to create a "master list" or "Index"
+of the universe of consensus DHSs across the samples. Finer granularity is needed to produce
+such an Index than hotspots typically provide, and for this purpose (and other select purposes),
+narrower regions of highly focused sensitivity to DNase I, called "peaks" or "DHSs,"
+can be called by hotspot2 via its script `density-peaks.bash` and then used as input
+to the Index-building script that is part of our [Index](https://github.com/Altius/Index) project.
+For flexibility and for historical reasons, `density-peaks.bash` can produce variable-width
+or fixed-width (150-bp) peaks. To produce an Index for a set of samples, variable-width peaks
+are required.
+
+To produce variable-width peaks during a full run of `hotspot2.sh`, supply the option `-p varWidth_nn_ID`
+as an argument to `hotspot2.sh`, with "nn" replaced by the minimum width (in bp) desired for a peak
+(20 is suggested and commonly used for analyses at Altius) and "ID" replaced by a unique identifier
+for the sample in question (e.g., a unique portion of the name of the sample's alignment file name).
+
+Variable-width peaks can also be produced via the script `density-peaks.bash` without running
+hotspot2 in its entirety. To do so, the following input files are needed:
+* the `yourData.cutcounts.starch` file produced by the initial run of `hotspot2.sh` (if the user
+accidentally or purposely deletes this file, s/he can recreate it via the script `cutcounts.bash`)
+* the `yourData.cleavage.total` file produced by `hotspot2.sh` (this file can likewise be recreated
+via `cutcounts.bash`)
+* the file of hotspots called at the user's desired threshold (hotspots can be called at any
+threshold of interest via `hsmerge.sh`, as described above)
+* an appropriate file of chromosome sizes, in BED (not .starch) format, with column 2 set to 0
+in every row.
+See the usage statement at the beginning of the code for `density-peaks.bash` for the full list
+of arguments and the order in which they must be provided. The name of a temporary directory
+must be given as the first argument, and `varWidth_nn_ID` (as described above, without the
+"-p" preceding it) must be given as the second argument.
+
 hotspot2 was developed by Eric Rynes, Jeff Vierstra, Jemma Nelson, Richard Sandstrom, Shane Neph,
 and Audra Johnson.
 
-Questions and feature requests are welcome, and may be e-mailed to erynes@altiusinstitute.org.
+Questions and feature requests are welcome, and may be e-mailed to erynes@altius.org.
