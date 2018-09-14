@@ -23,6 +23,7 @@ for the genome, it should be subtracted from the file of mappable regions before
 to hotspot2.)
 
 Note:  In the file of chromosome sizes, the "start" of each chromosome (column 2) must be 0.
+This file must also be an uncompressed BED file; .starch format is currently disallowed.
 
 Before hotspots can be identified, the set of viable positions that can serve as centers of
 sliding windows must be determined.  The script `extractCenterSites.sh` in the scripts subdirectory
@@ -105,7 +106,7 @@ are required.
 To produce variable-width peaks during a full run of `hotspot2.sh`, supply the option `-p varWidth_nn_ID`
 as an argument to `hotspot2.sh`, with "nn" replaced by the minimum width (in bp) desired for a peak
 (20 is suggested and commonly used for analyses at Altius) and "ID" replaced by a unique identifier
-for the sample in question (e.g., a unique portion of the name of the sample's alignment file name).
+for the sample in question (e.g., a unique portion of the name of the sample's alignment file).
 
 Variable-width peaks can also be produced via the script `density-peaks.bash` without running
 hotspot2 in its entirety. To do so, the following input files are needed:
