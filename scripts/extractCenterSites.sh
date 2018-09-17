@@ -4,15 +4,15 @@ usage() {
   cat >&2 <<__EOF__
 Usage:  "$0" [options] -c CHROM_SIZES -o OUTFILE
 
-NOTE: This script only needs to be run once per *genome*, not once per *sample*,
+NOTE: This script only needs to be run once per *genome build*, not once per *sample*,
       unless a change to the NEIGHBORHOOD_SIZE or MAPPABLE_REGIONS is desired.
       MAPPABLE_REGIONS, when supplied, should not contain any "blacklist" regions
-      (problematic satellite repeats, etc.).
+      (problematic satellite repeats, etc.), if any such regions are known.
 
 Options:
     -h                    Show this helpful help
 
-    -c CHROM_SIZES        BED or starch file of chromosome sizes, with column 2 set to zeroes. Mandatory.
+    -c CHROM_SIZES        BED (not .starch) file of chromosome sizes, with column 2 set to zeroes. Mandatory.
     -o OUTFILE            Output file name. Mandatory. If it doesn't end in .starch, .starch will be appended.
 
     -M MAPPABLE_REGIONS   BED or starch file of mappable regions, with "blacklist" subtracted when appropriate.

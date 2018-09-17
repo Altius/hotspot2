@@ -11,7 +11,7 @@ Options:
   Mandatory options:
     -c CHROM_SIZES_FILE   (lowercase 'c')
                           File containing the lengths of all chromosomes
-                          to include in the analysis, in BED or starch format.
+                          to include in the analysis, in BED (not .starch) format.
                           All start coordinates (column 2) must be 0.
     -C CENTER_SITES_FILE  (uppercase 'C')
                           File of mappble sites (1bp each) where cleavages
@@ -53,7 +53,9 @@ Options:
                           "varWidth_nn_ID" specifies that variable-width peaks,
                           down to a minimum width of nn bp, are to be reported.
                           (Use "varWidth_50_ID" for a minimum width of 50 bp, etc.)
-                          "ID" is an identifier written into column 4 of the peaks output file.
+                          "ID" is an identifier written into column 4 of the peaks output file
+                          (if you are processing multiple samples, be sure to supply
+                          a different, unique ID for each one).
                           These peaks correspond to full-width-at-half-maximum
                           elements for local maxima within the density curve;
                           a local minimum is substituted whenever half-maximum is not attained.
@@ -69,7 +71,7 @@ Options:
     the user can, if desired, efficiently call hotspots at any threshold value
     HOTSPOT_THRESHOLD < x <= SITECALL_THRESHOLD without re-running $0,
     via the script hsmerge.sh. It is generally recommended to set SITECALL_THRESHOLD
-    to the lowest value at which you might to investigate hotspots, e.g. 0.05 or 0.10.
+    to the lowest value at which you might want to investigate hotspots, e.g. 0.05 or 0.10.
     Higher values are generally only useful for debugging.
 
 __EOF__
@@ -241,8 +243,8 @@ TOTALCUTS_OUTFILE="$base.cleavage.total"
 OUTFILE="$base.allcalls.starch"
 DENSITY_OUTFILE="$base.density.starch"
 DENSITY_BW="$base.density.bw"
-PEAKS_OUTFILE="$base.peaks.starch"
-SPOT_SCORE_OUTFILE="$base.SPOT.txt"
+PEAKS_OUTFILE="$base.peaks.fdr$HOTSPOT_FDR_THRESHOLD.starch"
+SPOT_SCORE_OUTFILE="$base.SPOT.fdr$HOTSPOT_FDR_THRESHOLD.txt"
 
 clean=0
 if [[ -z "$TMPDIR" ]]; then

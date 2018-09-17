@@ -5,9 +5,11 @@ set -x -e -o pipefail
 if [[ $# != 5 && $# != 6 ]]; then
   echo "Usage: $0 in.bam cutcounts.starch fragments.starch totalcuts.txt chromSizes [mappableRegions.starch]" >&2
   echo -e "where the first three arguments after the BAM filename contain names of your choosing"
-  echo -e "for output files that will be created, and chromSizes is a .bed or .starch file of chromosome sizes,"
+  echo -e "for output files that will be created, and chromSizes is a .bed (not .starch) file of chromosome sizes,"
   echo -e "with the start of each chromosome (column 2) set to 0."
   echo -e "A file of mappable regions can optionally be supplied as a 4th argument; this is recommended."
+  echo -e "(If mappable but problematic \"blacklist\" regions are known, they should be subtracted"
+  echo -e "from the file of mappable regions prior to running this script.)"
   exit 2
 fi
 
