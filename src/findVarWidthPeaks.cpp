@@ -275,14 +275,29 @@ void cleanUpAnyOverlapsAndWriteOutput(vector<Range>& peaks, const long& minWidth
 		    }
 		  else
 		    {
-		      cerr << peaks[idxL].chrom << ':' << peaks[idxL].beg.x-1 << '-' << peaks[idxL].end.x
-			   << ", waveletSummit = " << peaks[idxL].inputSummit
-			   << ", FWHM summit = " << peaks[idxL].x_of_maxY
-			   << ",\nunsure how to resolve overlap with "
-			   << peaks[idxR].chrom << ':' << peaks[idxR].beg.x-1 << '-' << peaks[idxR].end.x
-			   << ", waveletSummit = " << peaks[idxR].inputSummit
-			   << ", FWHM summit = " << peaks[idxR].x_of_maxY << '.' << endl << endl;
-		      exit(2);
+		      if (peaks[idxL].beg.x == peaks[idxR].beg.x && peaks[idxL].end.x == peaks[idxR].end.x)
+			{
+			  // Two adjacent wavelet peaks yielded the same FWHM peak.
+			  // Delete the one whose wavelet summit (coordinate, x-value) is farther from the FWHM summit.
+			  // Do this by enforcing the idxL version to be the one we keep
+			  // and deleting the idxR version.
+			  long distL(labs(peaks[idxL].inputSummit - peaks[idxL].x_of_maxY)),
+			    distR(labs(peaks[idxR].inputSummit - peaks[idxR].x_of_maxY));
+			  if (distL > distR)
+			    peaks[idxL] = peaks[idxR];
+			  peaks.erase(peaks.begin() + idxR);
+			}
+		      else
+			{
+			  cerr << peaks[idxL].chrom << ':' << peaks[idxL].beg.x-1 << '-' << peaks[idxL].end.x
+			       << ", waveletSummit = " << peaks[idxL].inputSummit
+			       << ", FWHM summit = " << peaks[idxL].x_of_maxY
+			       << ",\nunsure how to resolve overlap with "
+			       << peaks[idxR].chrom << ':' << peaks[idxR].beg.x-1 << '-' << peaks[idxR].end.x
+			       << ", waveletSummit = " << peaks[idxR].inputSummit
+			       << ", FWHM summit = " << peaks[idxR].x_of_maxY << '.' << endl << endl;
+			  exit(2);
+			}
 		    }
 		}
 	    }
