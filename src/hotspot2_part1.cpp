@@ -10,6 +10,7 @@
 //
 #include "hotspot2_version.h" // for versioning
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
@@ -50,7 +51,8 @@ int idxFromChrom(string* ptr)
   if (chromAsInt.end() == it)
     {
       cerr << "Coding error:  Line " << __LINE__ << ", failed to find \""
-	   << *ptr << "\" in the lookup table." << endl << endl;
+           << *ptr << "\" in the lookup table." << endl
+           << endl;
       exit(2);
     }
   return it->second;
@@ -71,8 +73,8 @@ struct SiteRange {
 #endif
 };
 
-long double nextProbNegativeBinomial(const int& k, const long double& prevVal, const vector<long double>& params);
-long double nextProbNegativeBinomial(const int& k, const long double& prevVal, const vector<long double>& params)
+long double nextProbNegativeBinomial(const int k, const long double prevVal, const std::array<long double, 3> params);
+long double nextProbNegativeBinomial(const int k, const long double prevVal, const std::array<long double, 3> params)
 {
   if (params.size() < 2)
     {
@@ -100,8 +102,8 @@ long double nextProbNegativeBinomial(const int& k, const long double& prevVal, c
   return prevVal * m * (r + kk - 1.) / ((r + m) * kk);
 }
 
-long double nextProbBinomial(const int& k, const long double& prevVal, const vector<long double>& params);
-long double nextProbBinomial(const int& k, const long double& prevVal, const vector<long double>& params)
+long double nextProbBinomial(const int k, const long double prevVal, const std::array<long double, 3> params);
+long double nextProbBinomial(const int k, const long double prevVal, const std::array<long double, 3> params)
 {
   if (params.size() < 3)
     {
@@ -130,16 +132,16 @@ long double nextProbBinomial(const int& k, const long double& prevVal, const vec
   return prevVal * (m - v) * (nn + 1. - kk) / (v * kk);
 }
 
-long double nextProbPoisson(const int& k, const long double& prevVal, const vector<long double>& params);
-long double nextProbPoisson(const int& k, const long double& prevVal, const vector<long double>& params)
+long double nextProbPoisson(const int k, const long double prevVal, const std::array<long double, 3> params);
+long double nextProbPoisson(const int k, const long double prevVal, const std::array<long double, 3> params)
 {
-  if (params.empty())
-    {
-      cerr << "Error:  nextProbPoisson() received an incorrect parameter vector; expected m."
-           << endl
-           << endl;
-      exit(1);
-    }
+  //if (params.empty())
+  //  {
+  //    cerr << "Error:  nextProbPoisson() received an incorrect parameter vector; expected m."
+  //         << endl
+  //         << endl;
+  //    exit(1);
+  //  }
   if (0 == k)
     {
       cerr << "Error:  nextProbPoisson() received k = 0, which is invalid (require k > 0)."
@@ -153,13 +155,15 @@ long double nextProbPoisson(const int& k, const long double& prevVal, const vect
 
 class SiteManager {
 public:
-  SiteManager(ofstream& ofsJustPvals) : m_ofsJustNegLog10PscaledAndNumOccs(ofsJustPvals) {};
+  SiteManager(ofstream& ofsJustPvals)
+      : m_ofsJustNegLog10PscaledAndNumOccs(ofsJustPvals){};
   void addSite(const SiteRange& s);
   void processPvalue(const long double& pval
 #ifdef DEBUG
-		     , const bool& sampled
+      ,
+      const bool& sampled
 #endif
-		     );
+  );
   void writeLastUnreportedSite();
 
 private:
@@ -180,24 +184,24 @@ inline void SiteManager::writeLastUnreportedSite()
   if (!m_sites.empty())
     {
       cout << idxFromChrom(m_sites.front().chrom) << '\t'
-	   << m_sites.front().begPos << '\t'
-	   << m_sites.front().endPos - m_sites.front().begPos << '\t'
-	   << m_sites.front().negLog10P_scaled;
+           << m_sites.front().begPos << '\t'
+           << m_sites.front().endPos - m_sites.front().begPos << '\t'
+           << m_sites.front().negLog10P_scaled;
 #ifdef DEBUG
       cout << '\t' << m_sites.front().sampled;
 #endif
       cout << '\n';
       m_ofsJustNegLog10PscaledAndNumOccs << m_sites.front().negLog10P_scaled << '\t'
-					 << m_sites.front().endPos - m_sites.front().begPos << '\n';
+                                         << m_sites.front().endPos - m_sites.front().begPos << '\n';
     }
 }
 
-
 void SiteManager::processPvalue(const long double& pval
 #ifdef DEBUG
-				, const bool& sampled
+    ,
+    const bool& sampled
 #endif
-				)
+)
 {
   static const int MAX_VALUE = static_cast<int>(floor(-log10(numeric_limits<long double>::min()) * CHANGE_OF_SCALE + 0.5));
   int negLog10P_scaled;
@@ -206,9 +210,9 @@ void SiteManager::processPvalue(const long double& pval
   else
     {
       if (pval < numeric_limits<long double>::min())
-      	negLog10P_scaled = MAX_VALUE;
+        negLog10P_scaled = MAX_VALUE;
       else
-	negLog10P_scaled = static_cast<int>(floor(-log10(pval) * CHANGE_OF_SCALE + 0.5));
+        negLog10P_scaled = static_cast<int>(floor(-log10(pval) * CHANGE_OF_SCALE + 0.5));
     }
   deque<SiteRange>::iterator itCurSiteNeedingPval(m_sites.begin());
   while (itCurSiteNeedingPval != m_sites.end() && itCurSiteNeedingPval->hasPval)
@@ -216,7 +220,8 @@ void SiteManager::processPvalue(const long double& pval
   if (m_sites.end() == itCurSiteNeedingPval)
     {
       cerr << "Error:  line " << __LINE__ << ", m_sites is empty or already filled with P-values"
-	   << endl << endl;
+           << endl
+           << endl;
       exit(2);
     }
 
@@ -233,12 +238,12 @@ void SiteManager::processPvalue(const long double& pval
       it_prev--;
       if (it_prev->chrom == itCurSiteNeedingPval->chrom && it_prev->endPos + 1 == itCurSiteNeedingPval->endPos &&
 #ifdef DEBUG
-	  it_prev->sampled == itCurSiteNeedingPval->sampled &&
+          it_prev->sampled == itCurSiteNeedingPval->sampled &&
 #endif
-	  it_prev->negLog10P_scaled == itCurSiteNeedingPval->negLog10P_scaled)
-	itCurSiteNeedingPval->begPos = it_prev->begPos;
+          it_prev->negLog10P_scaled == itCurSiteNeedingPval->negLog10P_scaled)
+        itCurSiteNeedingPval->begPos = it_prev->begPos;
       else
-	writeLastUnreportedSite();
+        writeLastUnreportedSite();
       m_sites.pop_front();
     }
 }
@@ -302,8 +307,9 @@ private:
   int m_nextPosToSample;
   int m_sampledDataDistnSize;
 
-  long double (*m_pmf)(const int&, const long double&, const vector<long double>&); // Make these member variables, not local variables,
-  vector<long double> m_pmfParams; // so they can be accessed outside computeStats() for debugging.
+  long double (*m_pmf)(const int, const long double, const std::array<long double, 3>); // Make these member variables, not local variables,
+  //vector<long double> m_pmfParams; // so they can be accessed outside computeStats() for debugging.
+  std::array<long double, 3> m_pmfParams;
   const string* m_pCurChrom;
 };
 
@@ -311,7 +317,7 @@ BackgroundRegionManager::BackgroundRegionManager(const int& samplingInterval, co
 {
   m_posL = m_posC = m_posR = -1;
   m_runningSum_count = m_runningSum_countSquared
-    = m_runningSum_count_duringPrevComputation = m_runningSum_countSquared_duringPrevComputation = 0;
+      = m_runningSum_count_duringPrevComputation = m_runningSum_countSquared_duringPrevComputation = 0;
   m_numPtsInNullRegion = m_numPtsInNullRegion_duringPrevComputation = 0;
   m_kcutoff = m_modeYval = m_modeXval = -1;
   m_MAlength = MAlength; // see explanation in findCutoff(); 5 is good when samplingInterval = 1, 15 is good when windowSize/samplingInterval ~= 250
@@ -402,7 +408,7 @@ void BackgroundRegionManager::add(const SiteRange& s)
           m_distn.push_back(sc);
           m_sampledDataDistnSize++;
         }
-      if ( static_cast<int>(m_distn.size()) >= m_MAlength && m_distn[s.count].MAxN != -1 && m_distn[s.count].MAxN >= m_modeYval)
+      if (static_cast<int>(m_distn.size()) >= m_MAlength && m_distn[s.count].MAxN != -1 && m_distn[s.count].MAxN >= m_modeYval)
         {
           m_modeXval = s.count;
           m_modeYval = m_distn[s.count].MAxN;
@@ -474,7 +480,8 @@ void BackgroundRegionManager::findCutoff()
                 {
                   // The null region has expanded; increase the values accordingly.
                   for (long kk = static_cast<long>(kcutoff_uponEntry + 1);
-		       kk <= static_cast<long>(m_kcutoff); kk++)
+                       kk <= static_cast<long>(m_kcutoff);
+                       kk++)
                     {
                       m_runningSum_count += static_cast<long>(m_distn[kk].numOccs) * kk;
                       m_runningSum_countSquared += static_cast<long>(m_distn[kk].numOccs) * kk * kk;
@@ -635,8 +642,9 @@ void BackgroundRegionManager::computeStats(const int& this_k)
       m_numPtsInNullRegion_duringPrevComputation = m_numPtsInNullRegion;
       m_prev_k = 0;
       m_pmf = &nextProbPoisson;
-      m_pmfParams.clear();
-      m_pmfParams.push_back(0.);
+      //m_pmfParams.clear();
+      //m_pmfParams.push_back(0.);
+      m_pmfParams[0] = 0.;
       return;
     }
 
@@ -649,18 +657,19 @@ void BackgroundRegionManager::computeStats(const int& this_k)
   long double N(static_cast<long double>(m_numPtsInNullRegion));
   m = static_cast<long double>(m_runningSum_count) / N;
   v = (static_cast<long double>(m_runningSum_countSquared) - N * m * m) / (N - 1.);
-  m_pmfParams.clear();
+  //m_pmfParams.clear();
   static bool warningAlreadyIssued(false);
 
   // Set up the negative binomial model.
   // Double-check that m < v; if m >= v, which is extremely unlikely,
   // use a more appropriate model (binomial or Poisson).
   // Use the definitions of variance and mean to perform an integer (exact) test for m == v.
-  if (m_numPtsInNullRegion * m_runningSum_countSquared - m_runningSum_count*m_runningSum_count == m_runningSum_count*(m_numPtsInNullRegion - 1))
+  if (m_numPtsInNullRegion * m_runningSum_countSquared - m_runningSum_count * m_runningSum_count == m_runningSum_count * (m_numPtsInNullRegion - 1))
     {
       // Poisson, m = v
       prob0 = exp(-m);
-      m_pmfParams.push_back(m);
+      //m_pmfParams.push_back(m);
+      m_pmfParams[0] = m;
       m_pmf = &nextProbPoisson;
       if ((0 == m_runningSum_count || 1 == m_runningSum_count) && !warningAlreadyIssued)
         {
@@ -679,8 +688,10 @@ void BackgroundRegionManager::computeStats(const int& this_k)
         {
           // negative binomial
           long double r = m * m / (v - m);
-          m_pmfParams.push_back(m);
-          m_pmfParams.push_back(r);
+          //m_pmfParams.push_back(m);
+          //m_pmfParams.push_back(r);
+          m_pmfParams[0] = m;
+          m_pmfParams[1] = r;
           prob0 = pow(r / (r + m), r);
           m_pmf = &nextProbNegativeBinomial;
         }
@@ -699,9 +710,12 @@ void BackgroundRegionManager::computeStats(const int& this_k)
           // We choose to keep m as observed, and update the variance parameter v so that consistency is achieved.
           v = m * (1. - m / n); // Now m*m/(m-v) = the integer n. Example: m=1.8952, v=1.6747, n=16.2893-->16, v-->1.6701.
           prob0 = pow(v / m, n);
-          m_pmfParams.push_back(m);
-          m_pmfParams.push_back(v);
-          m_pmfParams.push_back(n);
+          //m_pmfParams.push_back(m);
+          //m_pmfParams.push_back(v);
+          //m_pmfParams.push_back(n);
+          m_pmfParams[0] = m;
+          m_pmfParams[1] = v;
+          m_pmfParams[2] = n;
           if (v > 1.0e-8)
             m_pmf = &nextProbBinomial;
           else
@@ -875,7 +889,7 @@ long double BackgroundRegionManager::getPvalue(const unsigned int& k)
 // passes them along, and "flushes" the distribution (deletes it, resets accompanying variables).
 void BackgroundRegionManager::computePandFlush(SiteManager& sm)
 {
- if (m_distn.empty())
+  if (m_distn.empty())
     return;
 
   if (!m_sliding || m_needToUpdate_kcutoff)
@@ -896,12 +910,13 @@ void BackgroundRegionManager::computePandFlush(SiteManager& sm)
             pval = getPvalue(m_sitesInRegion_leftHalf.front().count);
           else
             pval = 999.;
-	  sm.processPvalue(pval // pass this P-value along to the corresponding site
+          sm.processPvalue(pval // pass this P-value along to the corresponding site
 #ifdef DEBUG
-			   , m_sitesInRegion_leftHalf.front().sampled
+              ,
+              m_sitesInRegion_leftHalf.front().sampled
 #endif
-			   );
-	}
+          );
+        }
       m_sitesInRegion_leftHalf.pop_front();
     }
   while (!m_sitesInRegion_rightHalf.empty())
@@ -913,11 +928,12 @@ void BackgroundRegionManager::computePandFlush(SiteManager& sm)
             pval = getPvalue(m_sitesInRegion_rightHalf.front().count);
           else
             pval = 999.;
-	  sm.processPvalue(pval // pass this P-value along to the corresponding site
+          sm.processPvalue(pval // pass this P-value along to the corresponding site
 #ifdef DEBUG
-			   , m_sitesInRegion_rightHalf.front().sampled
+              ,
+              m_sitesInRegion_rightHalf.front().sampled
 #endif
-			   );
+          );
         }
       m_sitesInRegion_rightHalf.pop_front();
     }
@@ -925,8 +941,7 @@ void BackgroundRegionManager::computePandFlush(SiteManager& sm)
   m_distn.clear();
   m_posL = m_posC = m_posR = -1;
   m_pCurChrom = NULL;
-  m_runningSum_count = m_runningSum_countSquared = 
-    m_runningSum_count_duringPrevComputation = m_runningSum_countSquared_duringPrevComputation = 0;
+  m_runningSum_count = m_runningSum_countSquared = m_runningSum_count_duringPrevComputation = m_runningSum_countSquared_duringPrevComputation = 0;
   m_numPtsInNullRegion = m_numPtsInNullRegion_duringPrevComputation = 0;
   m_modeYval = m_modeXval = m_kcutoff = m_kTrendReversal = -1;
   m_sliding = false;
@@ -937,7 +952,7 @@ void BackgroundRegionManager::computePandFlush(SiteManager& sm)
 
   m_prev_k = -1;
   m_pmf = NULL;
-  m_pmfParams.clear();
+  //m_pmfParams.clear();
   m_nextPosToSample = -1;
   m_sampledDataDistnSize = 0;
 }
@@ -992,11 +1007,12 @@ void BackgroundRegionManager::slideAndCompute(const SiteRange& s, SiteManager& s
             pval = getPvalue(it->count);
           else
             pval = 999.;
-	  sm.processPvalue(pval
+          sm.processPvalue(pval
 #ifdef DEBUG
-			   , it->sampled
+              ,
+              it->sampled
 #endif
-			   );
+          );
           it->hasPval = true;
         }
 
@@ -1014,13 +1030,14 @@ void BackgroundRegionManager::slideAndCompute(const SiteRange& s, SiteManager& s
             pval = getPvalue(m_sitesInRegion_rightHalf.front().count);
           else
             pval = 999.;
-	  
-	  // pass this P-value along for the corresponding site
-	  sm.processPvalue(pval
+
+          // pass this P-value along for the corresponding site
+          sm.processPvalue(pval
 #ifdef DEBUG
-			   , m_sitesInRegion_rightHalf.front().sampled
+              ,
+              m_sitesInRegion_rightHalf.front().sampled
 #endif
-			   );
+          );
           m_sitesInRegion_rightHalf.front().hasPval = true;
         }
       m_sliding = true;
@@ -1204,12 +1221,13 @@ void BackgroundRegionManager::slideAndCompute(const SiteRange& s, SiteManager& s
             pval = getPvalue(m_sitesInRegion_rightHalf.front().count);
           else
             pval = 999.;
-	  // pass this P-value along for the corresponding site
-	  sm.processPvalue(pval
+          // pass this P-value along for the corresponding site
+          sm.processPvalue(pval
 #ifdef DEBUG
-			   , m_sitesInRegion_rightHalf.front().sampled
+              ,
+              m_sitesInRegion_rightHalf.front().sampled
 #endif
-			   );
+          );
           m_sitesInRegion_rightHalf.front().hasPval = true;
         }
     } // end of "while sliding and not bringing in any new observations because there's missing data there"
@@ -1304,12 +1322,13 @@ void BackgroundRegionManager::slideAndCompute(const SiteRange& s, SiteManager& s
             pval = getPvalue(m_sitesInRegion_rightHalf.front().count);
           else
             pval = 999.;
-	  // pass this P-value along for the corresponding site
-	  sm.processPvalue(pval
+          // pass this P-value along for the corresponding site
+          sm.processPvalue(pval
 #ifdef DEBUG
-			   , m_sitesInRegion_rightHalf.front().sampled
+              ,
+              m_sitesInRegion_rightHalf.front().sampled
 #endif
-			   );
+          );
           m_sitesInRegion_rightHalf.front().hasPval = true;
         }
 
@@ -1664,9 +1683,10 @@ void BackgroundRegionManager::slideAndCompute(const SiteRange& s, SiteManager& s
         pval = 999.;
       sm.processPvalue(pval
 #ifdef DEBUG
-		       , m_sitesInRegion_rightHalf.front().sampled
+          ,
+          m_sitesInRegion_rightHalf.front().sampled
 #endif
-		       );
+      );
       m_sitesInRegion_rightHalf.front().hasPval = true;
     }
 
@@ -1688,9 +1708,9 @@ void BackgroundRegionManager::slideAndCompute(const SiteRange& s, SiteManager& s
 }
 
 bool parseAndProcessInput(const int& windowSize, const int& samplingInterval, const int& MAlength,
-			  ofstream& ofsPvalData);
+    ofstream& ofsPvalData);
 bool parseAndProcessInput(const int& windowSize, const int& samplingInterval, const int& MAlength,
-			  ofstream& ofsPvalData)
+    ofstream& ofsPvalData)
 {
   const int BUFSIZE(1000);
   char buf[BUFSIZE], *p;
@@ -1698,7 +1718,7 @@ bool parseAndProcessInput(const int& windowSize, const int& samplingInterval, co
   int fieldnum;
   const int halfWindowSize(windowSize / 2); // integer division
   SiteRange curSite, prevSite;
-  
+
   BackgroundRegionManager brm(samplingInterval, MAlength);
   SiteManager sm(ofsPvalData);
 
@@ -1749,12 +1769,12 @@ bool parseAndProcessInput(const int& windowSize, const int& samplingInterval, co
       for (int siteEnd = start + 1; siteEnd <= end; siteEnd++)
         {
           curSite.endPos = siteEnd;
-	  curSite.begPos = curSite.endPos - 1;
+          curSite.begPos = curSite.endPos - 1;
 
           if (curSite.chrom != prevSite.chrom || curSite.endPos > prevSite.endPos + halfWindowSize)
             {
               brm.computePandFlush(sm); // Compute P-values for all unprocessed sites in the window.
-	      // Writes values to disk.
+              // Writes values to disk.
               // This method removes all count data from brm.
               brm.setBounds(curSite.chrom, curSite.endPos, curSite.endPos + windowSize - 1);
             }
@@ -1822,7 +1842,7 @@ int main(int argc, char* argv[])
           smoothing_parameter = atoi(optarg);
           break;
         case 'p':
-	  outfilenamePvals = optarg;
+          outfilenamePvals = optarg;
           break;
         case 'i':
           infilename = optarg;
@@ -1830,10 +1850,10 @@ int main(int argc, char* argv[])
         case 'o':
           outfilename = optarg;
           break;
-	case 'c':
+        case 'c':
           outfilenameChromNames = optarg;
           break;
-	case 'h':
+        case 'h':
           print_help = 1;
           break;
         case 'v':
@@ -1851,18 +1871,18 @@ int main(int argc, char* argv[])
   if (!print_help && !print_version && outfilenameChromNames.empty())
     {
       cerr << "Error:  No filename supplied for (temporary) output file of integer-to-chromosomeName mapping."
-	   << endl
-	   << endl;
+           << endl
+           << endl;
       print_help = 1;
     }
   if (!print_help && !print_version && outfilenamePvals.empty())
     {
       cerr << "Error:  No filename supplied for (temporary) output file of scaled -log10(P) values."
-	   << endl
-	   << endl;
+           << endl
+           << endl;
       print_help = 1;
     }
-  
+
   // Print usage and exit if necessary
   if (print_help)
     {
@@ -1874,9 +1894,9 @@ int main(int argc, char* argv[])
            << "  -m, --smoothing_prameter=INT   Smoothing parameter used in null modeling (5)\n"
            << "  -i, --input=FILE               A file to read input from (STDIN)\n"
            << "  -o, --output=FILE              A file to write output to (STDOUT)\n"
-	   << "  -c, --outputChromlist=FILE     Output file to store chromName-to-int mapping\n"
-	   << "  -p, --outputPvals=FILE         Output file to store scaled -log10(P) values and # occurrences\n"
-	   << "  -v, --version                  Print the version information and exit\n"
+           << "  -c, --outputChromlist=FILE     Output file to store chromName-to-int mapping\n"
+           << "  -p, --outputPvals=FILE         Output file to store scaled -log10(P) values and # occurrences\n"
+           << "  -v, --version                  Print the version information and exit\n"
            << "  -h, --help                     Display this helpful help\n"
            << "\n"
            << " output (sent to stdout) will be a .bed4 file with a scaled transformation of the P-value in field 4\n"
@@ -1916,25 +1936,24 @@ int main(int argc, char* argv[])
   if (!ofsIntToChrnameMapping)
     {
       cerr << "Error:  Unable to open file \"" << outfilenameChromNames << "\" for write."
-	   << endl
-	   << endl;
+           << endl
+           << endl;
       return -1;
     }
   ofstream ofsPvals(outfilenamePvals.c_str());
   if (!ofsPvals)
     {
       cerr << "Error:  Unable to open file \"" << outfilenamePvals << "\" for write."
-	   << endl
-	   << endl;
+           << endl
+           << endl;
       return -1;
     }
-  
-  if (!parseAndProcessInput(background_size, sampling_interval, smoothing_parameter,
-			    ofsPvals))
+
+  if (!parseAndProcessInput(background_size, sampling_interval, smoothing_parameter, ofsPvals))
     return -1;
 
   for (map<string*, int>::const_iterator it = chromAsInt.begin(); it != chromAsInt.end(); it++)
     ofsIntToChrnameMapping << it->second << '\t' << *(it->first) << '\n';
-  
+
   return 0;
 }
