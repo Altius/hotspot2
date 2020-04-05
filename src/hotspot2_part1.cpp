@@ -299,7 +299,7 @@ private:
   int m_kTrendReversal;
   bool m_sliding;
   bool m_needToUpdate_kcutoff;
-  set<int> m_kvalsWithMinMAxN;
+  int m_kvalsMax;
   int m_minMAxN;
   int m_prev_k;
 
@@ -454,7 +454,7 @@ void BackgroundRegionManager::findCutoff()
       m_kcutoff = m_sampledDataDistnSize - 1;
       m_minMAxN = m_kTrendReversal = -1;
       m_modeXval = m_modeYval = -1;
-      m_kvalsWithMinMAxN.clear();
+      m_kvalsMax = 0;
       m_needToUpdate_kcutoff = false;
 
       if (m_kcutoff != kcutoff_uponEntry)
@@ -506,7 +506,8 @@ void BackgroundRegionManager::findCutoff()
 
   int sum(0), idxL(m_modeXval + 1), idxR(m_modeXval + 1 + m_MAlength - 1); // these idxL and idxR values will be ignored/replaced if !m_sliding
   int idxC = m_modeXval + 1 + m_MAlength / 2; // integer division; see commendt directly above re: idxL and idxR
-  pair<int, int> xyCurMAxN;
+  int xCurMAxN = 0;
+  int yCurMAxN = 0;
   bool useGlobMin(false);
 
   if (!m_sliding)
@@ -552,10 +553,10 @@ void BackgroundRegionManager::findCutoff()
         }
       // else the "while" loop below won't get executed
     }
-  m_kvalsWithMinMAxN.clear();
+  m_kvalsMax = 0;
   if (idxR != m_sampledDataDistnSize - 1)
     {
-      m_kvalsWithMinMAxN.insert(idxC); // idxC == m_modeXval+1 + m_MAlength/2 here, whether !m_sliding or m_sliding==true
+      m_kvalsMax = max(m_kvalsMax, idxC);
       m_minMAxN = m_distn[idxC].MAxN;
     }
   long double minMAxN = static_cast<long double>(m_minMAxN);
@@ -564,37 +565,36 @@ void BackgroundRegionManager::findCutoff()
   while (idxR < m_sampledDataDistnSize)
     {
       idxC++;
-      xyCurMAxN.first = idxC;
-      xyCurMAxN.second = m_distn[idxC].MAxN;
-      if (static_cast<long double>(xyCurMAxN.second) > m_thresholdRatio * minMAxN)
+      xCurMAxN = idxC;
+      yCurMAxN = m_distn[idxC].MAxN;
+      if (static_cast<long double>(yCurMAxN) > m_thresholdRatio * minMAxN)
         {
           useGlobMin = true;
           break;
         }
       else
         {
-          if (0 == xyCurMAxN.second)
+          if (0 == yCurMAxN)
             {
               // We've detected a contiguous stretch of at least m_MAlength empty histogram bins.
               // Set the global minimum here, and break out of the loop.
               // m_kcutoff will be set following the exit from the loop.
-              m_kvalsWithMinMAxN.clear();
-              m_kvalsWithMinMAxN.insert(xyCurMAxN.first); // k == idxC
+              m_kvalsMax = xCurMAxN;
               m_minMAxN = 0;
               useGlobMin = true;
               break;
             }
         }
-      if (xyCurMAxN.second <= m_minMAxN)
+      if (yCurMAxN <= m_minMAxN)
         {
-          if (xyCurMAxN.second < m_minMAxN)
+          if (yCurMAxN < m_minMAxN)
             {
               // This is a unique, new minimum.
-              m_kvalsWithMinMAxN.clear();
-              m_minMAxN = xyCurMAxN.second;
+              m_kvalsMax = 0;
+              m_minMAxN = yCurMAxN;
               minMAxN = static_cast<long double>(m_minMAxN);
             } // else it's a duplicate occurrence of the existing minimum
-          m_kvalsWithMinMAxN.insert(xyCurMAxN.first); // k == idxC
+          m_kvalsMax = max(m_kvalsMax, xCurMAxN);
         }
       idxL++;
       idxR++;
@@ -607,7 +607,7 @@ void BackgroundRegionManager::findCutoff()
     {
       m_kcutoff = m_sampledDataDistnSize - 1;
       m_kTrendReversal = -1;
-      m_kvalsWithMinMAxN.clear();
+      m_kvalsMax = 0;
       m_minMAxN = -1;
       m_needToUpdate_kcutoff = false;
       if (m_kcutoff != kcutoff_uponEntry)
@@ -616,12 +616,11 @@ void BackgroundRegionManager::findCutoff()
     }
   // Otherwise, return the "global minimum so far" as the cutoff.
   // If there are ties (multiple k values with the same MAxN values), return the highest of these k values.
-  set<int>::const_iterator it = m_kvalsWithMinMAxN.end();
-  int k = *(--it);
+  int k = m_kvalsMax;
   m_kcutoff = k;
 
   if (m_minMAxN > 0)
-    m_kTrendReversal = xyCurMAxN.first; // where we determined the monotonically decreasing trend to have reversed
+    m_kTrendReversal = xCurMAxN; // where we determined the monotonically decreasing trend to have reversed
   else
     m_kTrendReversal = -1;
 
@@ -947,7 +946,7 @@ void BackgroundRegionManager::computePandFlush(SiteManager& sm)
   m_sliding = false;
   m_needToUpdate_kcutoff = true;
 
-  m_kvalsWithMinMAxN.clear();
+  m_kvalsMax = 0;
   m_minMAxN = -1;
 
   m_prev_k = -1;
