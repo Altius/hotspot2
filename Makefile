@@ -1,7 +1,7 @@
 BINDIR = bin
 SRCDIR = src
 CXX = g++
-CXXFLAGS = -O3 -pedantic -Wall -ansi -static
+CXXFLAGS = -O3 -pedantic -Wall -std=c++11 -static
 
 TARGETS = hotspot2_part1 hotspot2_part2 resolveOverlapsInSummit-CenteredPeaks findVarWidthPeaks
 EXE = $(addprefix $(BINDIR)/,$(TARGETS))
