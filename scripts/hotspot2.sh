@@ -198,6 +198,7 @@ else
     fi
 fi
 
+BED_MERGE_AWK="$(dirname "$0")/merge_adjacent_bed.awk"
 CUTCOUNT_EXE="$(dirname "$0")/cutcounts.bash"
 DENSPK_EXE="$(dirname "$0")/density-peaks.bash"
 MERGE_EXE="$(dirname "$0")/hsmerge.sh"
@@ -264,6 +265,7 @@ if [ ! -s $OUTFILE ] && ([ ! -s $TEMP_INTERMEDIATE_FILE_HOTSPOT2PART1 ] || [ ! -
     log "Tallying filtered cut counts in small windows and running part 1 of hotspot2..."
     bedmap --faster --range "$SITE_NEIGHBORHOOD_HALF_WINDOW_SIZE" --delim "\t" --prec 0 --echo --sum "$CENTER_SITES" "$CUTCOUNTS" \
 	| "$AWK_EXE" 'BEGIN{OFS="\t"}{if("NAN"==$4){$4=0} print $1, $2, $3, "i", $4}' \
+  | "$AWK_EXE" -f "$BED_MERGE_AWK" \
 	| "$HOTSPOT_EXE1" --background_size="$BACKGROUND_WINDOW_SIZE" -c $TEMP_CHROM_MAPPING_HOTSPOT2PART1 -p $TEMP_PVALS $SMOOTHING_PARAM -o $TEMP_INTERMEDIATE_FILE_HOTSPOT2PART1
     if [ "$?" != "0" ]; then
 	echo -e "An error occurred when calling bedmap on the \"center sites\" and filtered cut counts file, or while running part 1 of hotspot2."
