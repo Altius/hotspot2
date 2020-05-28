@@ -123,6 +123,29 @@ of arguments and the order in which they must be provided. The name of a tempora
 must be given as the first argument, and `varWidth_nn_ID` (as described above, without the
 "-p" preceding it) must be given as the second argument.
 
+### Output file formats
+
+All output files in BED or .starch format are 0-based. In the following, the first 3 columns
+in such files are named "seqname", "beg", and "end", and the 4th column is a placeholder
+("i", lowercase letter i) and/or identifying string ("ID").
+
+* `allcalls.starch`: seqname, beg, end, "i", FDR
+* `cleavage.total`: this one-line text file contains the total number of mapped cleavages
+* `cutcounts.starch`: seqname, beg, end, "i", number of mapped cleavages at that position
+* `density.bw`: this is a [bigWig](https://genome.ucsc.edu/goldenPath/help/bigWig.html) version of density.starch
+* `density.starch`: seqname, beg, end, ID, unnormalized density (the number of mapped cleavages
+in a 150-bp window centered on the given 20-bp interval)
+* `hotspots.starch`: seqname, beg, end, ID, -10\*log10(FDR) rounded to the nearest integer
+and capped at 1000, ".", "-1", "-1", -log10(FDR) capped at 100
+* `peaks.starch` (_variable-width option_): seqname, beg, end, ID, maximum normalized density within
+this element, FWHM summit coordinate, wavelet summit coordinate (maximum normalized density =
+(1000000/cleavage.total) \* (unnormalized density); see `cleavage.total` and `density.starch` above)
+* `peaks.starch` (_all other options_): seqname, beg, end, "i", maximum unnormalized density within this element
+* `narrowpeaks.starch`: seqname, beg, end, ".", "0", ".", column 5 from the corresponding peaks.starch file,
+"-1", "-1", "75"
+* `SPOT.txt`: this one-line text file contains the SPOT score (see above)
+
+
 hotspot2 was developed by Eric Rynes, Jeff Vierstra, Jemma Nelson, Richard Sandstrom, Shane Neph,
 and Audra Johnson.
 
